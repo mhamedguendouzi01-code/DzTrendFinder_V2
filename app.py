@@ -1,36 +1,21 @@
-import streamlit as st
+from flask import Flask, render_template
 import sqlite3
 
-st.set_page_config(page_title="GLOBAL HUB", layout="wide")
+app = Flask(__name__)
 
-st.markdown("""
-    <style>
-    .card { background: white; border-radius: 6px; padding: 5px; border: 1px solid #eee; text-align: center; height: 210px; }
-    .price-usd { color: #10b981; font-weight: bold; font-size: 16px; }
-    .stImage > img { height: 90px !important; object-fit: contain; }
-    .origin-tag { background: #333; color: white; font-size: 8px; padding: 2px 4px; border-radius: 3px; }
-    </style>
-    """, unsafe_allow_html=True)
+def get_db_connection():
+    # تأكد أن اسم الملف هو dz_finder.db
+    conn = sqlite3.connect('dz_finder.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
-st.title("🌎 Global Deal Finder ($)")
-
-conn = sqlite3.connect('dz_finder.db')
-try:
-    items = conn.execute("SELECT origin, name, price_usd, discount, link, image_url FROM products").fetchall()
+@app.route('/')
+def index():
+    conn = get_db_connection()
+    # تأكد أن اسم الجدول هو products
+    products = conn.execute('SELECT * FROM products').fetchall()
     conn.close()
+    return render_template('index.html', products=products)
 
-    if items:
-        cols = st.columns(10)
-        for i, item in enumerate(items):
-            with cols[i % 10]:
-                st.markdown(f'<div class="card">', unsafe_allow_html=True)
-                st.markdown(f'<span class="origin-tag">{item[0]}</span>', unsafe_allow_html=True)
-                st.image(item[5])
-                st.markdown(f"<p style='font-size:10px;'>{item[1][:15]}</p>", unsafe_allow_html=True)
-                st.markdown(f'<p class="price-usd">${item[2]}</p>', unsafe_allow_html=True)
-                st.link_button("View", item[4], use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("Run Scraper in Actions first.")
-except Exception as e:
-    st.error(f"Error: {e}")
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
