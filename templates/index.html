@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    
+    <title>DzTrendFinder - Dashboard</title>
+    
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; flex-wrap: wrap; justify-content: center; padding: 20px; }
+        .card { background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin: 15px; width: 250px; overflow: hidden; text-align: center; padding: 15px; }
+        .card img { width: 100%; height: 200px; object-fit: contain; background: #eee; border-radius: 5px; }
+        .platform-tag { background: #333; color: white; font-size: 10px; padding: 3px 8px; border-radius: 3px; display: inline-block; margin-top: 10px; }
+        .title { font-size: 14px; font-weight: bold; margin: 10px 0; height: 40px; overflow: hidden; }
+        .price { color: #2ecc71; font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+        .view-btn { display: block; padding: 10px; border: 1px solid #ddd; border-radius: 5px; text-decoration: none; color: #333; transition: 0.3s; }
+        .view-btn:hover { background: #eee; }
+    </style>
+</head>
+<body>
+
+    {% for product in products %}
+    <div class="card">
+        <img src="{{ product.image_url }}" alt="{{ product.title }}">
+        
+        <span class="platform-tag">{{ product.platform }}</span>
+        
+        <div class="title">{{ product.title }}</div>
+        
+        <div class="price">${{ product.price }}</div>
+        
+        <a href="{{ product.url }}" target="_blank" class="view-btn">View</a>
+    </div>
+    {% endfor %}
+
+</body>
+</html>
