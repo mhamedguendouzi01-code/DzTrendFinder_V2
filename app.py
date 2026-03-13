@@ -1,21 +1,29 @@
-from flask import Flask, render_template
+import streamlit as st
 import sqlite3
 
-app = Flask(__name__)
+# إعدادات الصفحة
+st.set_page_config(page_title="DzTrendFinder", layout="wide")
 
-def get_db_connection():
-    # تأكد أن اسم الملف هو dz_finder.db
+st.title("🇩🇿 DzTrendFinder - Dashboard")
+
+# دالة لجلب البيانات
+def get_products():
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
-    return conn
-
-@app.route('/')
-def index():
-    conn = get_db_connection()
-    # تأكد أن اسم الجدول هو products
     products = conn.execute('SELECT * FROM products').fetchall()
     conn.close()
-    return render_template('index.html', products=products)
+    return products
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+products = get_products()
+
+# عرض المنتجات في مربعات (Grid)
+cols = st.columns(3) # يعرض 3 منتجات في السطر
+
+for i, product in enumerate(products):
+    with cols[i % 3]:
+        st.image(product['image_url'], use_container_width=True)
+        st.subheader(product['title'])
+        st.write(f"**Prix:** ${product['price']}")
+        st.write(f"**Plateforme:** {product['platform']}")
+        st.link_button("Voir le produit", product['url'])
+        st.markdown("---")
