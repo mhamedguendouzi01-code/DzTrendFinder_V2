@@ -2,94 +2,105 @@ import streamlit as st
 import sqlite3
 import urllib.parse
 
-# إعدادات الصفحة
-st.set_page_config(page_title="DzTrend | Intelligence Portal", layout="wide")
+# إعداد الصفحة
+st.set_page_config(page_title="DzTrend | المتجر الذكي", layout="wide")
 
-# --- CSS الاحترافي والمودارن ---
+# --- CSS الأزرار المودارن ---
 st.markdown("""
     <style>
-    .stApp { background-color: #f7f9fc; }
-    .modern-card {
-        background: white; border-radius: 18px; padding: 15px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.04);
-        border: 1px solid #f0f0f0; text-align: center;
-        transition: transform 0.3s ease; position: relative;
+    /* أزرار التصنيفات الدائرية */
+    .quick-btn-container {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
     }
-    .modern-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); }
-    .discount-badge {
-        position: absolute; top: 12px; left: 12px;
-        background: linear-gradient(45deg, #ff4b2b, #ff416c);
-        color: white; padding: 3px 10px; border-radius: 10px;
-        font-weight: bold; font-size: 11px;
+    .quick-btn {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 25px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.3s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .product-img { width: 100%; height: 140px; object-fit: contain; margin-bottom: 12px; }
-    .product-title { font-size: 13px; font-weight: 600; color: #333; height: 38px; overflow: hidden; }
-    .rating { color: #f1c40f; font-size: 11px; margin-bottom: 8px; }
-    .price-old { color: #a0a0a0; text-decoration: line-through; font-size: 10px; }
-    .price-new { color: #2ecc71; font-size: 19px; font-weight: 800; margin: 4px 0; }
-    .profit-info { background: #e3f2fd; color: #1976d2; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 6px; display: inline-block; }
+    .quick-btn:hover {
+        background: #191919;
+        color: white;
+        transform: scale(1.05);
+    }
     
-    /* ستايل الأزرار */
-    div.stButton > button {
-        background: linear-gradient(to right, #2193b0, #6dd5ed);
-        color: white; border: none; border-radius: 10px;
-        font-weight: bold; width: 100%; height: 40px;
+    /* ستايل كرت AliExpress */
+    .ali-card {
+        background: white; border-radius: 12px; padding: 0; margin-bottom: 20px;
+    }
+    .ali-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; }
+    .ali-price { font-size: 18px; font-weight: bold; color: #191919; }
+    .shock-tag { background: #ffeded; color: #ff4747; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    
+    /* زر الواتساب العائم */
+    .floating-wa {
+        position: fixed; bottom: 20px; right: 20px;
+        background: #25d366; color: white; padding: 15px;
+        border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        z-index: 1000; font-size: 20px; text-decoration: none;
     }
     </style>
     """, unsafe_allow_html=True)
 
-def load_data():
-    try:
-        conn = sqlite3.connect('dz_finder.db')
-        conn.row_factory = sqlite3.Row
-        data = conn.execute('SELECT * FROM products ORDER BY added_at DESC').fetchall()
-        conn.close()
-        return data
-    except: return []
+# --- واجهة المستخدم ---
 
-# الهيدر
-st.markdown("<h1 style='text-align: center; color: #2c3e50;'>🛍️ DzTrend <span style='color: #2ecc71;'>Finder</span></h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #7f8c8d; font-size: 14px;'>همزات حصرية تحت 2000 دج محسوبة بذكاء</p>", unsafe_allow_html=True)
+# 1. شريط البحث والأزرار العلوية
+st.markdown("""
+    <div class="quick-btn-container">
+        <button class="quick-btn">🔥 الأكثر مبيعاً</button>
+        <button class="quick-btn">🚗 سيارات</button>
+        <button class="quick-btn">🎧 إلكترونيات</button>
+        <button class="quick-btn">🏠 منزل</button>
+        <button class="quick-btn">⚽ رياضة</button>
+    </div>
+    """, unsafe_allow_html=True)
 
-products = load_data()
+# 2. جلب البيانات (مع خوارزمية الفايدة)
+def get_products():
+    conn = sqlite3.connect('dz_finder.db')
+    conn.row_factory = sqlite3.Row
+    data = conn.execute("SELECT * FROM products ORDER BY (market_price - promo_price) DESC").fetchall()
+    conn.close()
+    return data
 
-if not products:
-    st.warning("⚠️ يرجى تشغيل سكريبت scraper.PY أولاً لتعبئة البيانات.")
-else:
-    cols = st.columns(6)
-    for i, row in enumerate(products):
-        # --- خوارزمية الفايدة الديناميكية ---
-        mkt_p = row['market_price']
-        prm_p = row['promo_price']
+products = get_products()
+cols = st.columns(6)
+
+for i, row in enumerate(products):
+    # حساب الفايدة المخفية (40% من التوفير)
+    saving = row['market_price'] - row['promo_price']
+    final_price = int(row['promo_price'] + (saving * 0.40))
+    discount = int((saving / row['market_price']) * 100)
+
+    with cols[i % 6]:
+        # تصميم AliExpress النقي
+        st.markdown(f'''
+            <div class="ali-card">
+                <img src="{row['image_url']}" class="ali-img">
+                <div style="font-size:12px; margin-top:8px; height:35px; overflow:hidden;">{row['title']}</div>
+                <div class="ali-price">{final_price} DA</div>
+                <div style="color:#999; text-decoration:line-through; font-size:11px;">{int(row['market_price'])} DA</div>
+                <div class="shock-tag">⚡ بري شوك! -{discount}%</div>
+            </div>
+        ''', unsafe_allow_html=True)
         
-        # التوفير الحقيقي
-        saving = mkt_p - prm_p
-        discount_pct = int((saving / mkt_p) * 100)
-        
-        # الفايدة: 40% من قيمة التوفير (تزيد بزيادة البرومو)
-        profit = int(saving * 0.40)
-        
-        # السعر النهائي للزبون
-        final_price = int(prm_p + profit)
+        # بوطونة الطلب تحت الكرت
+        msg = f"سلام محمد، حاب نطلب: {row['title']} بسعر {final_price} DA"
+        wa_url = f"https://wa.me/213600000000?text={urllib.parse.quote(msg)}"
+        st.link_button("🚀 اطلب الآن", wa_url)
 
-        with cols[i % 6]:
-            with st.container():
-                st.markdown(f'''
-                    <div class="modern-card">
-                        <div class="discount-badge">-{discount_pct}%</div>
-                        <img src="{row['image_url']}" class="product-img" onerror="this.src='https://via.placeholder.com/150'">
-                        <div class="product-title">{row['title']}</div>
-                        <div class="rating">⭐ {row['rating']} ({row['reviews_count']})</div>
-                        <div class="price-old">{mkt_p} DA</div>
-                        <div class="price-new">{final_price} DA</div>
-                        <div class="profit-info">💰 ربحك الصافي: +{profit} DA</div>
-                    </div>
-                ''', unsafe_allow_html=True)
-                
-                # زر الواتساب
-                msg = f"سلام محمد، حاب نطلب: {row['title']}\nالسعر النهائي: {final_price} DA"
-                wa_url = f"https://wa.me/213600000000?text={urllib.parse.quote(msg)}"
-                st.link_button("🚀 اطلب الآن", wa_url)
-
-st.divider()
-st.caption("© 2026 DzTrend Intelligence - نظام الوساطة الذكي")
+# 3. زر الواتساب العائم (Floating Action Button)
+st.markdown(f'''
+    <a href="https://wa.me/213600000000" class="floating-wa" target="_blank">
+        💬
+    </a>
+    ''', unsafe_allow_html=True)
