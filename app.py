@@ -4,50 +4,54 @@ import urllib.parse
 
 st.set_page_config(page_title="DzTrend Intelligence", layout="wide")
 
-# ستايل احترافي لـ 6 أعمدة
 st.markdown("""
     <style>
+    [data-testid="stHorizontalBlock"] { gap: 10px !important; }
     .product-card {
         border: 1px solid #eee; border-radius: 10px; padding: 10px;
-        background: white; text-align: center; min-height: 320px;
+        background: white; text-align: center; min-height: 280px;
     }
-    .title { font-size: 12px; font-weight: bold; color: #333; height: 35px; overflow: hidden; margin: 10px 0; }
-    .price { color: #2ecc71; font-weight: bold; font-size: 15px; }
-    .discount { background: #ff4b4b; color: white; padding: 2px 5px; border-radius: 5px; font-size: 10px; }
+    .img-container { width: 100%; height: 130px; overflow: hidden; border-radius: 8px; margin-bottom: 10px; }
+    .img-container img { width: 100%; height: 100%; object-fit: contain; }
+    .title { font-size: 12px; font-weight: bold; color: #333; height: 35px; overflow: hidden; margin: 5px 0; }
+    .price { color: #FF4B4B; font-weight: bold; font-size: 16px; }
     </style>
     """, unsafe_allow_html=True)
 
 def load_products():
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
-    data = conn.execute('SELECT * FROM products ORDER BY added_at DESC').fetchall()
+    data = conn.execute('SELECT * FROM products ORDER BY price ASC').fetchall()
     conn.close()
     return data
 
-st.title("🚀 DzTrend Intelligence")
+st.title("🚀 DzTrend Intelligence (Under 2000 DA)")
 
-# القائمة الجانبية للبحث بالصورة في السورس
 with st.sidebar:
     st.header("🔍 بحث بالصورة (Source)")
-    st.file_uploader("ارفع صورة للبحث في AliExpress", type=['jpg', 'png', 'jpeg'])
+    st.file_uploader("ارفع صورة للبحث في AliExpress", type=['jpg', 'png'])
 
 products = load_products()
 
 if not products:
-    st.warning("⚠️ لا توجد سلع. شغل scraper.PY")
+    st.warning("⚠️ لا توجد سلع تحت 2000 دج.")
 else:
-    cols = st.columns(6) # هنا درنا الـ 6 أعمدة
+    cols = st.columns(6)
     for i, row in enumerate(products):
         with cols[i % 6]:
             with st.container(border=True):
-                # عرض الصورة بطريقة تضمن الظهور
-                st.image(row['image_url'], use_container_width=True)
-                
-                st.markdown(f"<div class='discount'>-{row['discount_percent']}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='title'>{row['title']}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='price'>{row['promo_price']} DA</div>", unsafe_allow_html=True)
+                # الحل النهائي للصور: عرضها عبر HTML لتفادي بلوك Streamlit
+                st.markdown(f'''
+                    <div class="product-card">
+                        <div class="img-container">
+                            <img src="{row['image_url']}" onerror="this.src='https://via.placeholder.com/150?text=Image+Error'">
+                        </div>
+                        <div class="title">{row['title']}</div>
+                        <div class="price">{row['price']} DA</div>
+                    </div>
+                ''', unsafe_allow_html=True)
                 
                 # زر الواتساب
-                msg = f"سلام محمد، حاب نطلب هاد المنتج:\n{row['title']}\nالسعر: {row['promo_price']} DA"
+                msg = f"سلام محمد، حاب نطلب هاد المنتج (برومو < 2000 دج):\n{row['title']}\nالسعر: {row['price']} DA"
                 wa_url = f"https://wa.me/213600000000?text={urllib.parse.quote(msg)}"
                 st.link_button("🚀 اطلب الآن", wa_url)

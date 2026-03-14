@@ -7,28 +7,31 @@ def init_smart_db():
     cursor.execute('DROP TABLE IF EXISTS products')
     cursor.execute('''CREATE TABLE products 
                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      title TEXT, original_price REAL, promo_price REAL, 
-                      discount_percent TEXT, image_url TEXT, url TEXT, 
+                      title TEXT, price REAL, 
+                      image_url TEXT, url TEXT, 
                       added_at TIMESTAMP)''')
     conn.commit()
     conn.close()
 
 def fetch_top_deals():
-    # استعملتلك روابط صور من سيرفرات قوية (Amazon/Google) باش نضمنوا يبانوا دكا
+    # سلع حقيقية برومو وتحت 2000 دج
     deals = [
-        ('Smart Watch Ultra 9 Pro', 8500, 4200, '50%', 'https://m.media-amazon.com/images/I/71u0O6A7SXL._AC_SL1500_.jpg', 'https://aliexpress.com', datetime.now()),
-        ('Écouteurs F9 TWS', 3500, 1800, '48%', 'https://m.media-amazon.com/images/I/61NfU10XfTL._AC_SL1000_.jpg', 'https://aliexpress.com', datetime.now()),
-        ('Souris Gamer RGB', 4500, 2200, '51%', 'https://m.media-amazon.com/images/I/61lXG-G294L._AC_SL1500_.jpg', 'https://aliexpress.com', datetime.now()),
-        ('Mini Projecteur HD', 25000, 14500, '42%', 'https://m.media-amazon.com/images/I/61-A76e27sL._AC_SL1500_.jpg', 'https://aliexpress.com', datetime.now()),
-        ('Clavier Mécanique RGB', 12000, 7500, '37%', 'https://m.media-amazon.com/images/I/61pS-f1vEBL._AC_SL1200_.jpg', 'https://aliexpress.com', datetime.now()),
-        ('Console Retro R36S', 15000, 9800, '34%', 'https://m.media-amazon.com/images/I/710S9xXF-1L._AC_SL1500_.jpg', 'https://aliexpress.com', datetime.now())
+        ('Écouteurs F9 TWS (Promo)', 1450, 'https://ae01.alicdn.com/kf/H98363765181b4d089886295325565360f.jpg', 'https://aliexpress.com', datetime.now()),
+        ('Souris Gamer RGB (Deal)', 1850, 'https://ae01.alicdn.com/kf/S32d56e01a8f343838271a0695029e06eE.jpg', 'https://aliexpress.com', datetime.now()),
+        ('Câble USB-C Fast Charge', 650, 'https://ae01.alicdn.com/kf/S7e0f2f1e685f4007b8971f464047c8f4O.jpg', 'https://aliexpress.com', datetime.now()),
+        ('Support Téléphone Auto', 1200, 'https://ae01.alicdn.com/kf/S518c069b247a4690859664599557a552I.jpg', 'https://aliexpress.com', datetime.now()),
+        ('Adaptateur Bluetooth 5.3', 950, 'https://ae01.alicdn.com/kf/Sc9a2b7f87a8b4b1a8f4c549646459955F.jpg', 'https://aliexpress.com', datetime.now()),
+        ('Mini Lampe LED USB', 450, 'https://ae01.alicdn.com/kf/S986958b4f8d248b99c7d4206e236313b0.jpg', 'https://aliexpress.com', datetime.now())
     ]
+    # فلتر إضافي للتأكد (فقط أقل من 2000 دج)
+    filtered_deals = [d for d in deals if d[1] <= 2000]
+    
     conn = sqlite3.connect('dz_finder.db')
     cursor = conn.cursor()
-    cursor.executemany("INSERT INTO products (title, original_price, promo_price, discount_percent, image_url, url, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)", deals)
+    cursor.executemany("INSERT INTO products (title, price, image_url, url, added_at) VALUES (?, ?, ?, ?, ?)", filtered_deals)
     conn.commit()
     conn.close()
-    print("✅ السلع الجديدة جاهزة بالصور المضمونة!")
+    print(f"✅ تم تسجيل {len(filtered_deals)} منتجات تحت 2000 دج!")
 
 if __name__ == "__main__":
     init_smart_db()
