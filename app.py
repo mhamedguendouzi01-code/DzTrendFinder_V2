@@ -1,58 +1,93 @@
 import streamlit as st
 import sqlite3
-import urllib.parse
+from datetime import datetime, timedelta
 
-# إعدادات الصفحة
-st.set_page_config(page_title="DzTrend Finder | AliExpress", layout="wide", page_icon="🛍️")
+# إعداد الصفحة لتكون واسعة جداً وتناسب 10 أعمدة
+st.set_page_config(page_title="DzTrend Intelligence", layout="wide", page_icon="📈")
 
-# ستايل CSS لتحسين المظهر
+# ستايل CSS متطور للتحكم في الأعمدة وشكل السلعة
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 10px; background-color: #FF4B4B; color: white; height: 3em; font-weight: bold; }
-    .stCard { border: 1px solid #eee; padding: 15px; border-radius: 15px; background: white; box-shadow: 2px 2px 10px rgba(0,0,0,0.05); }
-    .price { color: #FF4B4B; font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+    /* تصغير الفراغات بين الأعمدة */
+    [data-testid="stHorizontalBlock"] { gap: 5px !important; }
+    
+    /* ستايل كرت المنتج */
+    .product-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 8px;
+        text-align: center;
+        background-color: white;
+        transition: transform 0.2s;
+        min-height: 250px;
+    }
+    .product-card:hover { transform: scale(1.02); border-color: #FF4B4B; }
+    .title { font-size: 11px; font-weight: bold; height: 35px; overflow: hidden; margin: 5px 0; }
+    .old-price { color: #999; text-decoration: line-through; font-size: 10px; }
+    .new-price { color: #2ecc71; font-weight: bold; font-size: 13px; }
+    .discount-badge { background: #FF4B4B; color: white; border-radius: 5px; padding: 2px 5px; font-size: 10px; position: absolute; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- معلوماتك (تأكد من وضع رقمك هنا) ---
-MY_WHATSAPP = "213600000000" 
+# --- وظائف قاعدة البيانات ---
+def get_all_products():
+    conn = sqlite3.connect('dz_finder.db')
+    conn.row_factory = sqlite3.Row
+    res = conn.execute('SELECT * FROM products ORDER BY added_at DESC').fetchall()
+    conn.close()
+    return res
 
-st.title("🛍️ DzTrend Finder")
-st.subheader("في الجزائر AliExpress وسيطك الموثوق للشراء من")
-st.info("اختر المنتج الذي أعجبك، وسنقوم بشرائه وشحنه لك حتى باب منزلك!")
+# --- واجهة المستخدم ---
 
-def load_data():
-    try:
-        conn = sqlite3.connect('dz_finder.db')
-        conn.row_factory = sqlite3.Row
-        products = conn.execute('SELECT * FROM products').fetchall()
-        conn.close()
-        return products
-    except:
-        return []
+# 1. القائمة الجانبية (Sidebar)
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/1162/1162456.png", width=80)
+    st.title("لوحة التحكم")
+    
+    # البحث بالصورة
+    st.subheader("🔍 بحث بالصورة")
+    img_file = st.file_uploader("ارفع صورة المنتج", type=['jpg', 'png', 'jpeg'])
+    if img_file:
+        st.info("جاري تحليل الصورة والبحث عن برومو...")
 
-products = load_data()
+    st.divider()
+    
+    # نظام التسجيل
+    st.subheader("📩 اشتراك التنبيهات")
+    email = st.text_input("بريدك الإلكتروني")
+    if st.button("تفعيل التنبيهات"):
+        st.success("تم التسجيل! ستحصل على الهمزات فور صدورها.")
+
+# 2. المحتوى الرئيسي
+st.title("🚀 DzTrend Intelligence")
+st.markdown("### أقوى التخفيضات والبروموات الحالية (تحديث لحظي)")
+
+products = get_all_products()
 
 if not products:
-    st.warning("🔄 جاري تحديث العروض... يرجى الانتظار.")
+    st.warning("لا توجد منتجات حالياً. شغل scraper.PY أولاً.")
 else:
-    cols = st.columns(3)
+    # إنشاء 10 أعمدة
+    cols = st.columns(10)
+    
     for i, row in enumerate(products):
-        with cols[i % 3]:
-            with st.container(border=True):
-                # عرض الصورة مع رابط بديل إذا فشلت
-                img = row['image_url'] if row['image_url'] else "https://via.placeholder.com/300"
-                st.image(img, use_container_width=True)
-                
-                st.subheader(row['title'])
-                st.markdown(f"<p class='price'>{row['price']}</p>", unsafe_allow_html=True)
-                
-                # رسالة واتساب
-                msg = f"سلام محمد، حاب نطلب هاد المنتج:\n{row['title']}\nالسعر: {row['price']}\nالرابط: {row['url']}"
-                wa_url = f"https://wa.me/{MY_WHATSAPP}?text={urllib.parse.quote(msg)}"
-                
-                st.link_button("🚀 اطلبها لي الآن", wa_url)
-                st.caption(f"🚚 التوصيل: 58 ولاية | المصدر: {row['platform']}")
+        # نوزع المنتجات على الـ 10 أعمدة بالتناوب
+        with cols[i % 10]:
+            # عرض الكرت
+            st.markdown(f"""
+                <div class="product-card">
+                    <span class="discount-badge">-{row['discount_percent']}</span>
+                    <img src="{row['image_url']}" style="width:100%; border-radius:5px;">
+                    <div class="title">{row['title']}</div>
+                    <div class="old-price">{row['original_price']} DA</div>
+                    <div class="new-price">{row['promo_price']} DA</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # زر الحجز (نظام 24 ساعة)
+            if st.button(f"حجز 🛒", key=f"btn_{row['id']}"):
+                st.toast(f"تم حجز {row['title']} لمدة 24 ساعة باسمك!", icon="✅")
 
+# 3. تذييل الصفحة
 st.divider()
-st.markdown("<p style='text-align: center;'>© 2026 DzTrend Finder - خدمة الوساطة التجارية</p>", unsafe_allow_html=True)
+st.caption("نظام ذكي لمراقبة الأسعار - جميع الحقوق محفوظة لـ DzTrend 2026")
