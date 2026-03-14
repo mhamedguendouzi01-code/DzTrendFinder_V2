@@ -1,0 +1,33 @@
+name: Auto Update AliExpress Deals
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # يشتغل وحدو كل يوم على 12 تاع الليل
+  workflow_dispatch:      # يسمحلك تشغلو يدوياً بوطونة من GitHub
+
+jobs:
+  update-db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests
+
+      - name: Run Scraper
+        run: python scraper.py
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add dz_finder.db
+          git commit -m "Auto-update deals $(date)" || echo "No changes to commit"
+          git push origin main
