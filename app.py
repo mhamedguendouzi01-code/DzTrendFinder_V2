@@ -3,10 +3,10 @@ import sqlite3
 import urllib.parse
 from datetime import datetime
 
-# 1. إعداد الصفحة
+# إعداد الصفحة
 st.set_page_config(page_title="DzTrend Finder", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. الديزاين المودارن (CSS)
+# الديزاين (CSS)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Poppins:wght@600;800&display=swap');
@@ -16,14 +16,12 @@ st.markdown("""
     .ali-card:hover { transform: translateY(-10px); border-color: #ff4747; }
     .ali-img { width: 100%; border-radius: 15px; aspect-ratio: 1/1; object-fit: cover; }
     .ali-price { font-family: 'Poppins'; font-size: 22px; font-weight: 800; color: #1a1a1a; margin: 5px 0; }
-    .old-price { text-decoration: line-through; color: #999; font-size: 14px; }
     .shock-badge { background: #fff0f0; color: #ff4747; padding: 5px 10px; border-radius: 10px; font-weight: bold; font-size: 12px; display: inline-block; }
     div.stButton > button { border-radius: 12px; font-weight: bold; width: 100%; background: white; border: 1px solid #ddd; height: 45px; }
     div.stButton > button:hover { background: #1a1a1a; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. وظائف جلب البيانات
 def get_products():
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
@@ -33,37 +31,59 @@ def get_products():
 
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
-# --- الصفحة الرئيسية ---
+# الصفحة الرئيسية
 if st.session_state.page == 'home':
     st.markdown('<div class="header-box"><h1>🔥 DzTrend Finder</h1><p>أفضل الهمزات في الجزائر</p></div>', unsafe_allow_html=True)
     products = get_products()
-    if not products:
-        st.info("المتجر فارغ، ادخل للوحة التحكم في الأسفل لصيد سلع جديدة.")
-    
     cols = st.columns(5)
     for i, row in enumerate(products):
         discount = int(((row['market_price'] - row['promo_price']) / row['market_price']) * 100)
         with cols[i % 5]:
-            st.markdown(f"""
+            st.markdown(f'''
                 <div class="ali-card">
                     <img src="{row['image_url']}" class="ali-img">
                     <div style="font-size:13px; height:40px; overflow:hidden; margin-top:10px;">{row['title']}</div>
                     <div class="ali-price">{int(row['promo_price'])} DA</div>
-                    <div class="old-price">{int(row['market_price'])} DA</div>
                     <div class="shock-badge">⚡ -{discount}%</div>
                 </div>
-            """, unsafe_allow_html=True)
+            ''', unsafe_allow_html=True)
             if st.button("عرض المنتج 🔍", key=f"btn_{row['id']}"):
                 st.session_state.selected_id = row['id']
                 st.session_state.page = 'detail'
                 st.rerun()
 
-# --- صفحة التفاصيل ---
+# صفحة التفاصيل
 elif st.session_state.page == 'detail':
-    if st.button("⬅️ عودة للمتجر"):
+    if st.button("⬅️ عودة"):
         st.session_state.page = 'home'
         st.rerun()
-    
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
-    p = conn.execute("SELECT * FROM products WHERE id
+    p = conn.execute("SELECT * FROM products WHERE id = ?", (st.session_state.selected_id,)).fetchone()
+    conn.close()
+    if p:
+        c1, c2 = st.columns(2)
+        with c1: st.image(p['image_url'], use_container_width=True)
+        with c2:
+            st.write(f"## {p['title']}")
+            st.write(f"### السعر: {p['promo_price']} DA")
+            msg = urllib.parse.quote(f"سلام، حاب نطلب هاد المنتج: {p['title']}")
+            st.link_button("🔥 اطلب عبر واتساب الآن", f"https://wa.me/213600000000?text={msg}")
+
+# لوحة التحكم
+st.markdown("<br><hr><br>", unsafe_allow_html=True)
+with st.expander("🔐 لوحة تحكم محمد"):
+    if st.text_input("كلمة السر", type="password") == "dz2026":
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🚀 صيد سلع"):
+                import scraper
+                scraper.auto_hunter()
+                st.rerun()
+        with col2:
+            if st.button("🗑️ مسح الكل"):
+                conn = sqlite3.connect('dz_finder.db')
+                conn.execute("DELETE FROM products")
+                conn.commit()
+                conn.close()
+                st.rerun()
