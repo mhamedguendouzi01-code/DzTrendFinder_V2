@@ -4,25 +4,31 @@ from datetime import datetime
 def auto_hunter():
     conn = sqlite3.connect('dz_finder.db')
     cursor = conn.cursor()
+    
+    # سلع تجريبية بالإنجليزية
     items = [
         {
-            "title": "Smart Watch Ultra 2 - AMOLED",
-            "promo_price": 2900, "market_price": 4500,
-            "image_url": "https://ae01.alicdn.com/kf/S7b8c7b6058864770b5610058e0a1122fI.jpg",
-            "options": "Electronics", "rating": 4.9
+            "title": "Baseus 65W GaN Fast Charger",
+            "promo_price": 6000, 
+            "market_price": 10000, 
+            "image_url": "https://ae01.alicdn.com/kf/S728f7311749548f0a026e6f1a8302066P.jpg",
+            "options": "Electronics"
         },
         {
-            "title": "Lenovo LP40 Pro Original",
-            "promo_price": 1850, "market_price": 3200,
+            "title": "RGB Mechanical Wireless Keyboard",
+            "promo_price": 9000, 
+            "market_price": 15000,
             "image_url": "https://ae01.alicdn.com/kf/S26667749004144e393a5628b03126f98u.jpg",
-            "options": "Audio", "rating": 4.7
+            "options": "Gaming"
         }
     ]
+
     for itm in items:
         cursor.execute('''INSERT OR REPLACE INTO products 
-            (title, promo_price, market_price, image_url, options, rating, added_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)''', 
+            (title, promo_price, market_price, image_url, options, added_at)
+            VALUES (?, ?, ?, ?, ?, ?)''', 
             (itm['title'], itm['promo_price'], itm['market_price'], 
-             itm['image_url'], itm['options'], itm['rating'], datetime.now()))
+             itm['image_url'], itm['options'], datetime.now()))
+    
     conn.commit()
     conn.close()
