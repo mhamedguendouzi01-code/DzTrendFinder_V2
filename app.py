@@ -5,14 +5,14 @@ from datetime import datetime
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="Global Trend Finder", layout="wide", page_icon="🌍")
 
-# 2. كود Pinterest
+# 2. كود توثيق Pinterest
 st.markdown('<head><meta name="p:domain_verify" content="5de1caac797abccd2cd0b92e1cc47217"/></head>', unsafe_allow_html=True)
 
-# 3. قاعدة البيانات (نسخة احترافية)
+# 3. إعداد قاعدة البيانات (تنبيه: هذا الكود سيمسح السلع القديمة المعطوبة)
 def init_db():
     conn = sqlite3.connect('dz_finder.db', check_same_thread=False)
-    # ملاحظة: إذا حبيت تمسح كلش قديم باش تبدأ سيري، نحي الهاش من السطر اللي تحت ودير Push
-    # conn.execute("DROP TABLE IF EXISTS products")
+    # هاد السطر هو "المفتاح": يمسح الجدول القديم اللي فيه خلل
+    conn.execute("DROP TABLE IF EXISTS products") 
     conn.execute('''CREATE TABLE IF NOT EXISTS products 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     title TEXT, promo_price REAL, image_url TEXT, affiliate_link TEXT, added_at DATETIME)''')
@@ -29,35 +29,43 @@ def get_products():
     conn.close()
     return res
 
+# تشغيل التهيئة عند كل تحديث للكود
 init_db()
 
-# 4. الواجهة
+# 4. واجهة العرض
 st.title("🌍 Global Trend Finder")
 products = get_products()
 
 if not products:
-    st.info("No products yet. Use the sidebar to add some!")
+    st.info("👋 الموقع جاهز! أضف أول سلعة من القائمة الجانبية.")
 else:
     cols = st.columns(3)
     for i, row in enumerate(products):
         with cols[i % 3]:
-            st.image(row['image_url'], use_container_width=True)
+            # عرض الصورة
+            if row['image_url']:
+                st.image(row['image_url'], use_container_width=True)
+            
             st.subheader(row['title'])
-            st.write(f"**Price: ${row['promo_price']}**")
-            st.link_button("Buy on AliExpress", row['affiliate_link'] or "https://s.click.aliexpress.com")
+            st.write(f"### ${row['promo_price']}")
+            
+            # زر الشراء (تم إصلاح الخلل هنا)
+            aff_link = row['affiliate_link'] if row['affiliate_link'] else "https://s.click.aliexpress.com"
+            st.link_button("🎁 Buy on AliExpress", aff_link, use_container_width=True)
 
-# 5. لوحة التحكم (هنا التعديل المهم)
+# 5. لوحة التحكم
 with st.sidebar:
     st.header("🔐 Admin Access")
     pwd = st.text_input("Password", type="password")
+    
     if pwd == "dz2026":
-        st.success("Welcome!")
-        with st.form("my_form", clear_on_submit=True): # clear_on_submit تفرغ الخانات بعد الإرسال
+        st.success("Welcome Back!")
+        with st.form("add_form", clear_on_submit=True):
             t = st.text_input("Product Name")
-            p = st.number_input("Price ($)", min_value=0.01)
+            p = st.number_input("Price ($)", min_value=0.01, step=0.01)
             img = st.text_input("Image URL")
             aff = st.text_input("Affiliate Link")
-            submit = st.form_submit_button("Publish to Website")
+            submit = st.form_submit_button("Publish Now")
             
             if submit:
                 if t and img:
@@ -67,9 +75,9 @@ with st.sidebar:
                                      (t, p, img, aff, datetime.now()))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Product Saved! Refreshing...")
-                        st.rerun() # هادي تدير Refresh أوتوماتيكلي باش تبان السلعة
+                        st.success("✅ تم بنجاح! السلعة الآن مباشرة على الموقع.")
+                        st.rerun()
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"خطأ في الحفظ: {e}")
                 else:
-                    st.warning("Please fill Name and Image URL!")
+                    st.warning("يرجى إدخال الاسم ورابط الصورة!")
