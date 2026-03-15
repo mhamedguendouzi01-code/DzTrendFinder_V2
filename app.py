@@ -2,14 +2,14 @@ import streamlit as st
 import sqlite3
 from datetime import datetime
 
-# 1. إعدادات الصفحة الأساسية
+# 1. إعدادات الصفحة الأساسية (لازم تكون هي الأولى)
 st.set_page_config(
     page_title="Global Trend Finder | Premium Deals",
     layout="wide",
     page_icon="🌍"
 )
 
-# 2. كود توثيق Pinterest (المهم جداً لربط حسابك)
+# 2. كود توثيق Pinterest (المهم جداً لربط الموقع)
 st.markdown(
     """
     <head>
@@ -35,31 +35,33 @@ st.markdown("""
     }
     .product-image {
         width: 100%;
-        height: 200px;
+        height: 220px;
         object-fit: contain;
         border-radius: 8px;
     }
     .price-tag {
         color: #eb4d4b;
-        font-size: 22px;
+        font-size: 24px;
         font-weight: bold;
         margin: 10px 0;
     }
     .product-title {
-        font-size: 16px;
+        font-size: 18px;
         height: 50px;
         overflow: hidden;
         color: #2d3436;
         margin-top: 10px;
+        font-weight: 500;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 4. إعداد قاعدة البيانات (مصححة لتمحي الأخطاء السابقة)
+# 4. إعداد قاعدة البيانات (هنا نصلحو كل الأخطاء السابقة)
 def init_db():
     conn = sqlite3.connect('dz_finder.db')
-    # ملاحظة: إذا حبيت تمسح كل السلع القديمة وتبدأ من جديد، نحي الهاش (#) من السطر اللي تحت
-    # conn.execute("DROP TABLE IF EXISTS products") 
+    # ملاحظة: السطر اللي تحت يمسح الجدول القديم المعطوب ويصنع واحد جديد متوافق تماماً
+    # سنتركه مفعلاً لمرة واحدة لتنظيف موقعك، ثم يمكنك إضافة سلعك بأمان
+    conn.execute("DROP TABLE IF EXISTS products") 
     conn.execute('''CREATE TABLE IF NOT EXISTS products 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     title TEXT, promo_price REAL, image_url TEXT, affiliate_link TEXT, added_at DATETIME)''')
@@ -75,17 +77,18 @@ def get_products():
     conn.close()
     return res
 
+# تشغيل التهيئة
 init_db()
 
 # 5. واجهة الموقع الرئيسية
 st.title("🌍 Global Trend Finder")
-st.markdown("### Hand-Picked Viral Gadgets & Premium Deals")
+st.markdown("### Hand-Picked Viral Gadgets & Premium Deals from AliExpress")
 st.divider()
 
 products = get_products()
 
 if not products:
-    st.info("👋 Welcome! Start by adding products from the Admin Panel in the sidebar.")
+    st.info("👋 Welcome! Use the Admin Panel in the sidebar to add your first trending product.")
 else:
     cols = st.columns(3)
     for i, row in enumerate(products):
@@ -97,9 +100,9 @@ else:
                     <div class="price-tag">${row['promo_price']:.2f}</div>
                 </div>
             ''', unsafe_allow_html=True)
-            # زر الشراء مع حماية من الأخطاء
-            aff_link = row['affiliate_link'] if 'affiliate_link' in row.keys() and row['affiliate_link'] else "https://s.click.aliexpress.com"
-            st.link_button("🎁 Get Deal on AliExpress", aff_link, use_container_width=True)
+            # زر الشراء (رابط الأفلييت)
+            link = row['affiliate_link'] if row['affiliate_link'] else "https://s.click.aliexpress.com"
+            st.link_button("🎁 View Deal on AliExpress", link, use_container_width=True)
 
 # 6. لوحة التحكم الجانبية (Admin Panel)
 with st.sidebar:
@@ -107,9 +110,9 @@ with st.sidebar:
     pwd = st.text_input("Admin Password", type="password")
     
     if pwd == "dz2026":
-        st.success("Log in Successful!")
+        st.success("Access Granted!")
         st.divider()
-        st.subheader("➕ Add New Product")
+        st.subheader("➕ Add New Viral Product")
         
         with st.form("add_product_form"):
             new_title = st.text_input("Product Name (English)")
@@ -117,7 +120,7 @@ with st.sidebar:
             new_img = st.text_input("Image Link (Direct URL)")
             new_aff = st.text_input("Your Affiliate Link")
             
-            submitted = st.form_submit_button("Publish Product")
+            submitted = st.form_submit_button("Publish to Website")
             
             if submitted and new_title and new_img:
                 conn = sqlite3.connect('dz_finder.db')
@@ -125,10 +128,10 @@ with st.sidebar:
                              (new_title, new_price, new_img, new_aff, datetime.now()))
                 conn.commit()
                 conn.close()
-                st.toast("Product added successfully!")
+                st.toast("✅ Product published successfully!")
                 st.rerun()
     else:
-        st.warning("Enter password to add products.")
+        st.warning("Enter password to manage products.")
 
     st.divider()
-    st.caption("Global Trend Finder v4.1 | 2026")
+    st.caption("Global Trend Finder v5.0 | 2026")
