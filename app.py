@@ -1,83 +1,55 @@
 import streamlit as st
 import sqlite3
 import urllib.parse
+from datetime import datetime
 
-# 1. إعداد الصفحة بستايل عصري
+# 1. إعداد الصفحة (ستايل احترافي)
 st.set_page_config(
-    page_title="DzTrend | Modern Shopping", 
-    layout="wide", 
+    page_title="DzTrend | متجر الهمزات",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# 2. الديزاين المودارن (CSS)
+# 2. الديزاين المودارن (CSS) - النسخة اللي عجبتك
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Poppins:wght@400;600;800&display=swap');
-
-    .stApp {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        font-family: 'Cairo', sans-serif;
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Poppins:wght@600;800&display=swap');
+    
+    .stApp { background-color: #f8f9fa; font-family: 'Cairo', sans-serif; }
+    
+    /* الهيدر */
+    .header-box {
+        text-align: center; padding: 20px; background: white;
+        border-radius: 0 0 30px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
     }
 
-    [data-testid="stSidebar"] { display: none; }
-
-    /* هيدر الموقع */
-    .header-text {
-        text-align: center;
-        padding: 30px 0;
-        background: white;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-    }
-
-    /* كرت المنتج المودارن */
+    /* كرت المنتج */
     .ali-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-        border-radius: 28px !important;
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.04);
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 20px;
+        background: white; border-radius: 20px; padding: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        text-align: center; transition: 0.3s; margin-bottom: 20px;
+        border: 1px solid #eee;
     }
-    .ali-card:hover {
-        transform: translateY(-12px);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-        border-color: #ff4747;
-    }
-
-    .ali-img {
-        width: 100%; aspect-ratio: 1/1; object-fit: cover;
-        border-radius: 28px 28px 0 0;
-        transition: 0.5s;
-    }
-    
-    .info-box { padding: 18px; text-align: right; direction: rtl; }
-    .ali-price { 
-        font-family: 'Poppins', sans-serif;
-        font-size: 24px; font-weight: 800; color: #1a1a1a; margin: 8px 0;
-    }
-    
+    .ali-card:hover { transform: translateY(-10px); border-color: #ff4747; }
+    .ali-img { width: 100%; border-radius: 15px; aspect-ratio: 1/1; object-fit: cover; }
+    .ali-price { font-family: 'Poppins'; font-size: 22px; font-weight: 800; color: #1a1a1a; margin: 5px 0; }
+    .old-price { text-decoration: line-through; color: #999; font-size: 14px; }
     .shock-badge { 
-        background: linear-gradient(90deg, #ff4747, #ff7e7e);
-        color: white; padding: 4px 12px; border-radius: 12px;
-        font-size: 11px; font-weight: bold; display: inline-block;
+        background: #fff0f0; color: #ff4747; padding: 5px 10px; 
+        border-radius: 10px; font-weight: bold; font-size: 12px; display: inline-block;
     }
-
-    /* بوطونة التفاصيل السفلية */
+    
+    /* بوطونة العرض */
     div.stButton > button {
-        width: 100%; border-radius: 15px; border: 1px solid #eee;
-        background: white; color: #555; font-weight: 600; height: 42px;
+        border-radius: 12px; font-weight: bold; width: 100%;
+        background: white; border: 1px solid #ddd; height: 45px;
     }
-    div.stButton > button:hover {
-        background: #1a1a1a; color: white; border-color: #1a1a1a;
-    }
+    div.stButton > button:hover { background: #1a1a1a; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. وظائف قاعدة البيانات
+# 3. جلب البيانات من القاعدة
 def get_products():
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
@@ -85,79 +57,47 @@ def get_products():
     conn.close()
     return data
 
-# 4. إدارة الصفحات
+# 4. إدارة التنقل (Home / Detail)
 if 'page' not in st.session_state: st.session_state.page = 'home'
-if 'selected_id' not in st.session_state: st.session_state.selected_id = None
 
 # --- الصفحة الرئيسية ---
 if st.session_state.page == 'home':
-    st.markdown('<div class="header-text"><h1>🔥 DzTrend Finder</h1><p>أفضل الهمزات الأوتوماتيكية</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h1>🔥 DzTrend Finder</h1><p>أقوى تخفيضات AliExpress في الجزائر</p></div>', unsafe_allow_html=True)
     
     products = get_products()
     
     if not products:
-        st.info("المتجر فارغ حالياً، ادخل للوحة التحكم في الأسفل لصيد سلع جديدة!")
+        st.warning("المحل فارغ حالياً! ادخل للوحة التحكم في الأسفل واضغط على 'صيد سلع'.")
     
-    cols = st.columns(5, gap="medium")
+    cols = st.columns(5) # 5 منتجات في الصف الواحد
     for i, row in enumerate(products):
         discount = int(((row['market_price'] - row['promo_price']) / row['market_price']) * 100)
-        
         with cols[i % 5]:
-            st.markdown(f'''
+            st.markdown(f"""
                 <div class="ali-card">
                     <img src="{row['image_url']}" class="ali-img">
-                    <div class="info-box">
-                        <div class="shock-badge">تخفيض {discount}%</div>
-                        <div class="ali-price">{int(row['promo_price'])} DA</div>
-                        <div style="font-size:13px; color:#666; height:40px; overflow:hidden;">{row['title']}</div>
-                    </div>
+                    <div style="font-size:13px; height:40px; overflow:hidden; margin-top:10px;">{row['title']}</div>
+                    <div class="ali-price">{int(row['promo_price'])} DA</div>
+                    <div class="old-price">{int(row['market_price'])} DA</div>
+                    <div class="shock-badge">⚡ بري شوك! -{discount}%</div>
                 </div>
-            ''', unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
-            if st.button("عرض المنتج 🔍", key=f"v_{row['id']}"):
+            if st.button("عرض المنتج 🔍", key=f"btn_{row['id']}"):
                 st.session_state.selected_id = row['id']
                 st.session_state.page = 'detail'
                 st.rerun()
 
-# --- صفحة التفاصيل ---
+# --- صفحة تفاصيل المنتج ---
 elif st.session_state.page == 'detail':
+    if st.button("⬅️ عودة للمتجر"):
+        st.session_state.page = 'home'
+        st.rerun()
+        
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
     p = conn.execute("SELECT * FROM products WHERE id = ?", (st.session_state.selected_id,)).fetchone()
     conn.close()
 
-    if st.button("⬅️ عودة للمتجر"):
-        st.session_state.page = 'home'
-        st.rerun()
-
-    c1, c2 = st.columns([1, 1], gap="large")
-    with c1:
-        st.image(p['image_url'], use_container_width=True)
-    
-    with c2:
-        st.markdown(f"""
-            <div style="text-align:right; direction:rtl;">
-                <h1>{p['title']}</h1>
-                <h2 style="color:#ff4747;">السعر الحصري: {int(p['promo_price'])} DA</h2>
-                <p style="color:#999; text-decoration:line-through;">السعر القديم: {int(p['market_price'])} DA</p>
-                <hr>
-                <p>⭐ تقييم المنتج: {p['rating']}/5</p>
-                <p>📦 خيارات المنتج: {p['options']}</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        wa_msg = f"سلام، حاب نطلب المنتج: {p['title']}"
-        wa_url = f"https://wa.me/213600000000?text={urllib.parse.quote(wa_msg)}"
-        st.link_button("🔥 اطلب عبر واتساب الآن", wa_url)
-
-# --- لوحة التحكم (Admin Panel) ---
-st.markdown("<br><br><br>", unsafe_allow_html=True)
-with st.expander("🔐 لوحة تحكم المدير (محمد)"):
-    pw = st.text_input("كلمة السر", type="password")
-    if pw == "dz2026":
-        st.success("مرحباً بك يا باطرون!")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🚀 صيد سلع جديدة أوتوماتيكياً"):
-                try:
-                    import scraper
+    if p:
+        c1, c2 = st.columns
