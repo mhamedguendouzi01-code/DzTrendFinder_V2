@@ -52,22 +52,14 @@ st.markdown("""
         color: #2d3436;
         margin-top: 10px;
     }
-    .buy-btn {
-        background-color: #ff4757;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
-        text-decoration: none;
-        display: inline-block;
-        width: 100%;
-        font-weight: bold;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-# 4. إعداد قاعدة البيانات
+# 4. إعداد قاعدة البيانات (مصححة لتمحي الأخطاء السابقة)
 def init_db():
     conn = sqlite3.connect('dz_finder.db')
+    # ملاحظة: إذا حبيت تمسح كل السلع القديمة وتبدأ من جديد، نحي الهاش (#) من السطر اللي تحت
+    # conn.execute("DROP TABLE IF EXISTS products") 
     conn.execute('''CREATE TABLE IF NOT EXISTS products 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     title TEXT, promo_price REAL, image_url TEXT, affiliate_link TEXT, added_at DATETIME)''')
@@ -76,7 +68,10 @@ def init_db():
 def get_products():
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
-    res = conn.execute("SELECT * FROM products ORDER BY added_at DESC").fetchall()
+    try:
+        res = conn.execute("SELECT * FROM products ORDER BY added_at DESC").fetchall()
+    except:
+        res = []
     conn.close()
     return res
 
@@ -102,9 +97,9 @@ else:
                     <div class="price-tag">${row['promo_price']:.2f}</div>
                 </div>
             ''', unsafe_allow_html=True)
-            # زر الشراء (رابط الأفلييت)
-            link = row['affiliate_link'] if row['affiliate_link'] else "https://s.click.aliexpress.com"
-            st.link_button("🎁 Get Deal on AliExpress", link, use_container_width=True)
+            # زر الشراء مع حماية من الأخطاء
+            aff_link = row['affiliate_link'] if 'affiliate_link' in row.keys() and row['affiliate_link'] else "https://s.click.aliexpress.com"
+            st.link_button("🎁 Get Deal on AliExpress", aff_link, use_container_width=True)
 
 # 6. لوحة التحكم الجانبية (Admin Panel)
 with st.sidebar:
@@ -136,4 +131,4 @@ with st.sidebar:
         st.warning("Enter password to add products.")
 
     st.divider()
-    st.caption("Global Trend Finder v4.0 | 2026")
+    st.caption("Global Trend Finder v4.1 | 2026")
