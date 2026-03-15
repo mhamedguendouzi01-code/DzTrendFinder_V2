@@ -4,7 +4,7 @@ import urllib.parse
 from datetime import datetime
 
 # 1. إعداد الصفحة
-st.set_page_config(page_title="DzTrend | متجر الهمزات", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="DzTrend Finder", layout="wide", initial_sidebar_state="collapsed")
 
 # 2. الديزاين المودارن (CSS)
 st.markdown("""
@@ -23,7 +23,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. وظائف قاعدة البيانات
+# 3. وظائف جلب البيانات
 def get_products():
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
@@ -35,7 +35,7 @@ if 'page' not in st.session_state: st.session_state.page = 'home'
 
 # --- الصفحة الرئيسية ---
 if st.session_state.page == 'home':
-    st.markdown('<div class="header-box"><h1>🔥 DzTrend Finder</h1><p>أفضل التخفيضات في الجزائر</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h1>🔥 DzTrend Finder</h1><p>أفضل الهمزات في الجزائر</p></div>', unsafe_allow_html=True)
     products = get_products()
     if not products:
         st.info("المتجر فارغ، ادخل للوحة التحكم في الأسفل لصيد سلع جديدة.")
@@ -50,7 +50,7 @@ if st.session_state.page == 'home':
                     <div style="font-size:13px; height:40px; overflow:hidden; margin-top:10px;">{row['title']}</div>
                     <div class="ali-price">{int(row['promo_price'])} DA</div>
                     <div class="old-price">{int(row['market_price'])} DA</div>
-                    <div class="shock-badge">⚡ بري شوك! -{discount}%</div>
+                    <div class="shock-badge">⚡ -{discount}%</div>
                 </div>
             """, unsafe_allow_html=True)
             if st.button("عرض المنتج 🔍", key=f"btn_{row['id']}"):
@@ -66,16 +66,4 @@ elif st.session_state.page == 'detail':
     
     conn = sqlite3.connect('dz_finder.db')
     conn.row_factory = sqlite3.Row
-    p = conn.execute("SELECT * FROM products WHERE id = ?", (st.session_state.selected_id,)).fetchone()
-    conn.close()
-
-    if p:
-        c1, c2 = st.columns(2) # هنا ريغلتلك المشكل تاع st.columns
-        with c1:
-            st.image(p['image_url'], use_container_width=True)
-        with c2:
-            st.markdown(f"<div style='text-align:right;'><h2>{p['title']}</h2>", unsafe_allow_html=True)
-            st.markdown(f"<h3 style='color:#ff4747;'>{int(p['promo_price'])} DA</h3>", unsafe_allow_html=True)
-            st.write(f"⭐ التقييم: {p['rating']}/5")
-            msg = urllib.parse.quote(f"سلام، حاب نطلب المنتج: {p['title']}")
-            st.link_button("🔥 ا
+    p = conn.execute("SELECT * FROM products WHERE id
