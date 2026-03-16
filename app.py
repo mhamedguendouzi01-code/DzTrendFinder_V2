@@ -8,18 +8,11 @@ st.set_page_config(page_title="Global Deals Hub", layout="wide", page_icon="🛍
 # 2. كود Pinterest
 st.markdown('<head><meta name="p:domain_verify" content="5de1caac797abccd2cd0b92e1cc47217"/></head>', unsafe_allow_html=True)
 
-# 3. قاعدة البيانات (تم ضبطها لتمسح الخطأ القديم أوتوماتيكياً لمرة واحدة)
+# 3. قاعدة بيانات جديدة تماماً (بإسم جديد لتجاوز أي خطأ قديم)
 def init_db():
-    conn = sqlite3.connect('dz_finder.db', check_same_thread=False)
-    cursor = conn.cursor()
-    
-    # فحص إذا كانت الخانة الجديدة موجودة، إذا لالا يصفر الجدول
-    try:
-        cursor.execute("SELECT platform FROM products LIMIT 1")
-    except sqlite3.OperationalError:
-        cursor.execute("DROP TABLE IF EXISTS products")
-    
-    cursor.execute('''CREATE TABLE IF NOT EXISTS products 
+    # غيرنا الإسم هنا باش السيرفر يفتح ملف جديد نظيف
+    conn = sqlite3.connect('shop_v1.db', check_same_thread=False)
+    conn.execute('''CREATE TABLE IF NOT EXISTS products 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     title TEXT, promo_price REAL, image_url TEXT, 
                     affiliate_link TEXT, platform TEXT, added_at DATETIME)''')
@@ -27,7 +20,7 @@ def init_db():
     conn.close()
 
 def get_products():
-    conn = sqlite3.connect('dz_finder.db', check_same_thread=False)
+    conn = sqlite3.connect('shop_v1.db', check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         res = conn.execute("SELECT * FROM products ORDER BY added_at DESC").fetchall()
@@ -38,15 +31,15 @@ def get_products():
 
 init_db()
 
-# 4. واجهة العرض
+# 4. الواجهة الرئيسية
 st.title("🌍 Global Deals Hub")
-st.write("### Best Viral Gadgets: Amazon, AliExpress & Temu")
+st.write("### Discover Viral Gadgets: Amazon, AliExpress & Temu")
 st.divider()
 
 products = get_products()
 
 if not products:
-    st.info("👋 الموقع جاهز. عمر السلعة من القائمة الجانبية (Sidebar) وستظهر هنا فوراً.")
+    st.info("👋 السيت راهو واجد ونظيف. عمر أول سلعة من الـ Sidebar!")
 else:
     cols = st.columns(3)
     for i, row in enumerate(products):
@@ -73,10 +66,13 @@ with st.sidebar:
             submit = st.form_submit_button("Publish Now")
             
             if submit and t and img:
-                conn = sqlite3.connect('dz_finder.db', check_same_thread=False)
-                conn.execute("INSERT INTO products (title, promo_price, image_url, affiliate_link, platform, added_at) VALUES (?, ?, ?, ?, ?, ?)",
-                             (t, p, img, aff, plat, datetime.now()))
-                conn.commit()
-                conn.close()
-                st.success("✅ Published!")
-                st.rerun()
+                try:
+                    conn = sqlite3.connect('shop_v1.db', check_same_thread=False)
+                    conn.execute("INSERT INTO products (title, promo_price, image_url, affiliate_link, platform, added_at) VALUES (?, ?, ?, ?, ?, ?)",
+                                 (t, p, img, aff, plat, datetime.now()))
+                    conn.commit()
+                    conn.close()
+                    st.success("✅ Published!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
