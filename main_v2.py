@@ -1,78 +1,69 @@
 import streamlit as st
-import sqlite3
-from datetime import datetime
+import pandas as pd
 
-# 1. إعدادات الصفحة
-st.set_page_config(page_title="Global Deals Hub", layout="wide", page_icon="🛍️")
+# إعدادات واجهة المستخدم
+st.set_page_config(page_title="Global Deals Hub", page_icon="🌍", layout="wide")
 
-# 2. كود Pinterest
-st.markdown('<head><meta name="p:domain_verify" content="5de1caac797abccd2cd0b92e1cc47217"/></head>', unsafe_allow_html=True)
+# إخفاء عناصر Streamlit الزائدة ليعطيك مظهر احترافي
+hide_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_style, unsafe_allow_html=True)
 
-# 3. قاعدة بيانات جديدة تماماً (بإسم جديد لتجاوز أي خطأ قديم)
-def init_db():
-    # غيرنا الإسم هنا باش السيرفر يفتح ملف جديد نظيف
-    conn = sqlite3.connect('shop_v1.db', check_same_thread=False)
-    conn.execute('''CREATE TABLE IF NOT EXISTS products 
-                    (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    title TEXT, promo_price REAL, image_url TEXT, 
-                    affiliate_link TEXT, platform TEXT, added_at DATETIME)''')
-    conn.commit()
-    conn.close()
+# كلمة المرور للدخول للوحة التحكم
+PASSWORD = "dz2026"
 
-def get_products():
-    conn = sqlite3.connect('shop_v1.db', check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    try:
-        res = conn.execute("SELECT * FROM products ORDER BY added_at DESC").fetchall()
-    except:
-        res = []
-    conn.close()
-    return res
+# لوحة التحكم في الجانب (Sidebar)
+st.sidebar.title("🔐 Admin Panel")
+pwd_input = st.sidebar.text_input("Password", type="password")
 
-init_db()
+if pwd_input == PASSWORD:
+    st.sidebar.success("Access Granted!")
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📦 Bulk Upload")
+    
+    # زر رفع ملف الإكسل
+    uploaded_file = st.sidebar.file_uploader("Choose Excel File", type=['xlsx'])
 
-# 4. الواجهة الرئيسية
+    if uploaded_file:
+        try:
+            df = pd.read_excel(uploaded_file)
+            st.session_state['products'] = df.to_dict('records')
+            st.sidebar.success(f"Loaded {len(df)} products!")
+        except Exception as e:
+            st.sidebar.error(f"Error reading file: {e}")
+
+# واجهة العرض الرئيسية
 st.title("🌍 Global Deals Hub")
-st.write("### Discover Viral Gadgets: Amazon, AliExpress & Temu")
-st.divider()
+st.markdown("### Discover Viral Gadgets: Amazon, AliExpress & Temu")
+st.markdown("---")
 
-products = get_products()
-
-if not products:
-    st.info("👋 السيت راهو واجد ونظيف. عمر أول سلعة من الـ Sidebar!")
-else:
+# عرض السلع إذا كانت موجودة
+if 'products' in st.session_state and st.session_state['products']:
+    products = st.session_state['products']
+    
+    # عرض السلع في شكل شبكة (Grid) من 3 أعمدة
     cols = st.columns(3)
-    for i, row in enumerate(products):
-        with cols[i % 3]:
-            st.image(row['image_url'], use_container_width=True)
-            st.subheader(row['title'])
-            st.markdown(f"## ${row['promo_price']:.2f}")
-            plat = row['platform'] if row['platform'] else "AliExpress"
-            st.link_button(f"Buy on {plat}", row['affiliate_link'], use_container_width=True)
-            st.write("---")
-
-# 5. لوحة التحكم
-with st.sidebar:
-    st.header("🔐 Admin Panel")
-    pwd = st.text_input("Password", type="password")
-    if pwd == "dz2026":
-        st.success("Access Granted!")
-        with st.form("add_form", clear_on_submit=True):
-            t = st.text_input("Product Title")
-            p = st.number_input("Price ($)", min_value=0.01)
-            img = st.text_input("Image URL")
-            aff = st.text_input("Affiliate Link")
-            plat = st.selectbox("Platform", ["AliExpress", "Amazon", "Temu", "eBay"])
-            submit = st.form_submit_button("Publish Now")
+    for idx, item in enumerate(products):
+        with cols[idx % 3]:
+            # عرض الصورة
+            img = item.get('Image URL', 'https://via.placeholder.com/300')
+            st.image(img, use_container_width=True)
             
-            if submit and t and img:
-                try:
-                    conn = sqlite3.connect('shop_v1.db', check_same_thread=False)
-                    conn.execute("INSERT INTO products (title, promo_price, image_url, affiliate_link, platform, added_at) VALUES (?, ?, ?, ?, ?, ?)",
-                                 (t, p, img, aff, plat, datetime.now()))
-                    conn.commit()
-                    conn.close()
-                    st.success("✅ Published!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
+            # معلومات السلعة
+            st.subheader(item.get('Product Title', 'No Title'))
+            st.write(f"**Price:** ${item.get('Price', '0.00')}")
+            st.write(f"**Platform:** {item.get('Platform', 'Store')}")
+            
+            # زر الرابط (Affiliate Link)
+            link = item.get('Affiliate Link', '#')
+            st.markdown(f"[🔗 View Deal]({link})")
+            st.markdown("---")
+else:
+    # رسالة تظهر عندما يكون السيت فارغاً
+    st.info("👋 Welcome! Please upload an Excel file from the Sidebar to see products.")
+    st.image("https://via.placeholder.com/1000x400?text=Waiting+for+Inventory+Upload...", use_container_width=True)
