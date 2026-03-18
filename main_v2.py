@@ -1,116 +1,89 @@
 import streamlit as st
 import pandas as pd
 
-# 1. إعدادات الصفحة الاحترافية (Layout Wide)
+# 1. إعدادات الصفحة
 st.set_page_config(page_title="Global Deals Hub", page_icon="🌍", layout="wide")
 
-# 2. تصميم CSS عصري (تصغير الصور وتنسيق البطاقات)
+# 2. تصميم CSS عصري (تنظيم البطاقات وتصغير الصور)
 st.markdown("""
     <style>
-    /* تنسيق الحاوية الكبيرة */
-    .main {
-        background-color: #f0f2f6;
-    }
-    /* تنسيق بطاقة المنتج */
-    [data-testid="stVerticalBlock"] > div:has(div.stImage) {
+    .product-card {
         background-color: white;
         border-radius: 15px;
-        padding: 15px;
-        border: 1px solid #e6e6e6;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        transition: transform 0.2s;
+        padding: 10px;
+        border: 1px solid #efefef;
+        text-align: center;
+        margin-bottom: 20px;
     }
-    [data-testid="stVerticalBlock"] > div:has(div.stImage):hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    .stImage > img {
+        border-radius: 10px;
+        max-height: 180px;
+        object-fit: contain;
     }
-    /* تصغير حجم السعر */
-    .price-tag {
+    .price {
         color: #1a73e8;
         font-weight: bold;
-        font-size: 1.2rem;
-        margin-bottom: 10px;
+        font-size: 1.3rem;
     }
-    /* تنسيق العناوين */
-    .product-title {
-        font-weight: 600;
+    .title {
         font-size: 0.9rem;
-        height: 40px;
+        font-weight: 600;
+        height: 45px;
         overflow: hidden;
-        margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. لوحة التحكم في الجانب (Sidebar)
+# 3. Sidebar (لوحة التحكم)
 with st.sidebar:
     st.title("🔐 Admin Panel")
     pwd = st.text_input("Password", type="password")
-    
     if pwd == "dz2026":
         st.success("Access Granted!")
-        uploaded_file = st.file_uploader("Upload Excel File", type=['xlsx'])
+        uploaded_file = st.file_uploader("Upload Excel", type=['xlsx'])
         if uploaded_file:
-            # قراءة الملف وتنظيف أسماء الأعمدة من أي فراغ خفي
             df = pd.read_excel(uploaded_file)
+            # تنظيف أسماء الأعمدة من الفراغات (أهم خطوة)
             df.columns = df.columns.str.strip()
-            # حفظ البيانات في جلسة العمل
             st.session_state['data'] = df
-            st.sidebar.info(f"✅ Loaded {len(df)} Products!")
-        
-        if st.button("🗑️ Clear All Data"):
-            if 'data' in st.session_state:
-                del st.session_state['data']
-                st.rerun()
+            st.success(f"Loaded {len(df)} Products!")
 
 # 4. الواجهة الرئيسية
 st.title("🌍 Global Deals Hub")
-st.write("Discover Viral Gadgets: Amazon, AliExpress & Temu")
+st.write("Viral Gadgets from Amazon, AliExpress & Temu")
 
-# 5. ميزة البحث (Search Bar)
 if 'data' in st.session_state:
-    search_query = st.text_input("🔍 Search for products...", placeholder="e.g. Smart Watch")
+    df = st.session_state['data']
     
-    df_display = st.session_state['data']
-    
-    # فلترة النتائج بناءً على البحث
-    if search_query:
-        df_display = df_display[df_display['Product Title'].str.contains(search_query, case=False, na=False)]
+    # محرك البحث
+    search = st.text_input("🔍 Search products...", "")
+    if search:
+        df = df[df['Product Title'].str.contains(search, case=False, na=False)]
 
     st.divider()
-
-    # 6. عرض المنتجات في 4 أعمدة (لتصغير الصور)
-    if not df_display.empty:
-        cols = st.columns(4) # هنا صغرنا الصور بجعل الأعمدة 4
-        
-        for index, row in df_display.reset_index().iterrows():
-            with cols[index % 4]:
-                # استخراج البيانات
+    
+    # عرض السلع في 4 أعمدة
+    cols = st.columns(4)
+    for index, row in df.iterrows():
+        with cols[index % 4]:
+            with st.container():
+                # جلب البيانات مع تنظيف الروابط
                 img_url = str(row.get('Image URL', '')).strip()
-                title = str(row.get('Product Title', 'No Title'))
-                price = row.get('Price', '0.00')
-                link = str(row.get('Affiliate Link', '#')).strip()
-                platform = str(row.get('Platform', 'Shop Now'))
-
+                aff_link = str(row.get('Affiliate Link', '#')).strip()
+                
                 # عرض الصورة
-                if img_url and img_url != 'nan':
+                if img_url and img_url != 'nan' and img_url.startswith('http'):
                     st.image(img_url, use_container_width=True)
                 else:
-                    st.image("https://via.placeholder.com/150?text=No+Image", use_container_width=True)
+                    st.image("https://via.placeholder.com/150?text=Check+Image+Link", use_container_width=True)
                 
-                # عرض النصوص والبوطونة
-                st.markdown(f"<div class='product-title'>{title[:50]}...</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='price-tag'>${price}</div>", unsafe_allow_html=True)
-                st.caption(f"📍 Platform: {platform}")
-                st.link_button("🔥 View Deal", link, use_container_width=True)
-                st.write("") # فراغ صغير بين الأسطر
-    else:
-        st.warning("No products found for your search.")
+                # العنوان والسعر
+                st.markdown(f"<div class='title'>{row.get('Product Title', 'No Title')[:45]}...</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='price'>${row.get('Price', '0.00')}</div>", unsafe_allow_html=True)
+                st.caption(f"📍 {row.get('Platform', 'Shop')}")
+                
+                # البوطونة
+                st.link_button("🔥 View Deal", aff_link, use_container_width=True)
+                st.write("") 
 else:
-    # واجهة الترحيب عند عدم وجود بيانات
-    st.info("👋 Welcome! Use the Admin Panel on the left to upload your Excel inventory.")
-    st.image("https://via.placeholder.com/1200x400?text=Waiting+for+Your+Deals...", use_container_width=True)
-
-# 7. تذييل الصفحة
-st.markdown("---")
-st.markdown("<center>© 2026 Global Deals Hub - All Rights Reserved</center>", unsafe_allow_html=True)
+    st.info("👋 Welcome! Please upload your Excel file from the Admin Panel.")
