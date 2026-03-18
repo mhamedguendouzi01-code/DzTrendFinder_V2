@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Mega Store Hub", page_icon="🛍️", layout="wide")
+st.set_page_config(page_title="Smart Auto-Category Store", layout="wide")
 
-# تصميم CSS (بطاقات السلع + التاجات)
+# تصميم احترافي
 st.markdown("""
     <style>
     .product-card {
@@ -12,92 +12,90 @@ st.markdown("""
         transition: 0.3s ease;
     }
     .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-    .price { color: #2ecc71; font-weight: bold; font-size: 1.4rem; margin: 10px 0; }
+    .price { color: #2ecc71; font-weight: bold; font-size: 1.4rem; }
     .title { font-size: 0.85rem; font-weight: 600; height: 45px; overflow: hidden; color: #333; }
-    .category-tag { font-size: 0.7rem; color: #777; font-style: italic; }
+    .cat-label { background: #f0f2f6; color: #555; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-bottom: 5px; display: inline-block; }
     </style>
     """, unsafe_allow_html=True)
 
-if 'inventory' not in st.session_state:
-    st.session_state['inventory'] = None
+if 'inventory' not in st.session_state: st.session_state['inventory'] = None
 
-# --- لوحة التحكم (Admin) ---
+# --- الجانب الإداري ---
 with st.sidebar:
-    st.title("🛡️ Admin Panel")
+    st.title("🛡️ Admin")
     if st.text_input("Key", type="password") == "dz2026":
-        file = st.file_uploader("Upload Excel File", type=['xlsx', 'csv'])
+        file = st.file_uploader("Upload Scraped File", type=['xlsx', 'csv'])
         if file:
             try:
                 df = pd.read_excel(file) if file.name.endswith('xlsx') else pd.read_csv(file)
                 df.columns = df.columns.astype(str).str.strip()
                 
-                # قاموس موسع لدعم جميع المنصات والأعمدة
+                # قاموس ذكي للأعمدة بما فيها الكاتيقوري
                 mapping = {
-                    'Product Desc': 'Title', 'Product Name': 'Title', 'item_title': 'Title',
-                    'Price': 'Price', 'sale_price': 'Price', 'Discount Price': 'Price',
-                    'Image Url': 'Image', 'main_image': 'Image', 'Product Main Image Url': 'Image',
-                    'Link': 'Link', 'Promotion Url': 'Link', 'url': 'Link',
-                    'Category': 'Category', 'category': 'Category', 'Product Category': 'Category'
+                    'Product Desc': 'Title', 'Product Name': 'Title', 'title': 'Title',
+                    'Price': 'Price', 'sale_price': 'Price',
+                    'Image Url': 'Image', 'main_image': 'Image',
+                    'Link': 'Link', 'url': 'Link',
+                    'Category': 'Category', 'category': 'Category', 'Category Name': 'Category', 'item_category': 'Category'
                 }
                 df = df.rename(columns=mapping)
+                
+                # إذا لم يجد عمود Category، نصنفه "General"
+                if 'Category' not in df.columns:
+                    df['Category'] = 'General'
+                
                 st.session_state['inventory'] = df
-                st.sidebar.success(f"✅ Loaded {len(df)} Products!")
+                st.sidebar.success(f"✅ Loaded {len(df)} Items!")
             except Exception as e:
                 st.sidebar.error(f"Error: {e}")
 
-# --- الواجهة الرئيسية ---
-st.title("🛒 DZ Smart Marketplace")
+# --- واجهة العرض ---
+st.title("🛒 Smart Multi-Store")
 
 if st.session_state['inventory'] is not None:
     df = st.session_state['inventory']
     
-    # 1. إنشاء قائمة التصنيفات (Dynamic Dropdown)
-    # نجبدو كامل الأصناف الموجودة في الإكسل بلا تكرار
-    if 'Category' in df.columns:
-        categories = ["All Categories"] + sorted(df['Category'].dropna().unique().tolist())
-    else:
-        categories = ["All Categories"]
+    # استخراج قائمة الأصناف من الملف تلقائياً
+    raw_categories = df['Category'].dropna().unique().tolist()
+    # تنظيف الأسماء (لأن علي إكسبريس يعطي مسارات طويلة مثل Electronics > Phones)
+    clean_categories = sorted(list(set([str(c).split('>')[0].strip() for c in raw_categories])))
+    
+    categories = ["All Products"] + clean_categories
+    
+    # القائمة المنسدلة (Dropdown)
+    selected_cat = st.selectbox("📂 Filter by Category:", categories)
 
-    # 2. تصميم "ليستة ديرولونت" (الـ Filter)
-    selected_cat = st.selectbox("📂 Select Category", categories)
+    # محرك البحث
+    search = st.text_input("🔍 Search for a specific item...")
 
-    # 3. محرك البحث بالنص
-    search_q = st.text_input("🔍 Search for a product...")
-
-    # 4. عملية الفلترة (Filtering Logic)
+    # الفلترة
     filtered_df = df.copy()
+    if selected_cat != "All Products":
+        # فلترة ذكية (تبحث إذا كان الكاتيقوري يحتوي على الكلمة المختارة)
+        filtered_df = filtered_df[filtered_df['Category'].str.contains(selected_cat, case=False, na=False)]
     
-    # فلترة حسب التصنيف
-    if selected_cat != "All Categories":
-        filtered_df = filtered_df[filtered_df['Category'] == selected_cat]
-    
-    # فلترة حسب البحث
-    if search_q:
-        filtered_df = filtered_df[filtered_df['Title'].str.contains(search_q, case=False, na=False)]
+    if search:
+        filtered_df = filtered_df[filtered_df['Title'].str.contains(search, case=False, na=False)]
 
     st.divider()
 
-    # 5. عرض السلع
-    if not filtered_df.empty:
-        cols = st.columns(4)
-        for i, (idx, row) in enumerate(filtered_df.iterrows()):
-            with cols[i % 4]:
-                t, p, img, lnk, cat = str(row.get('Title','')), str(row.get('Price','0')), str(row.get('Image','')), str(row.get('Link','#')), str(row.get('Category','General'))
-                
-                if img.startswith('//'): img = 'https:' + img
-                if not img.startswith('http'): img = "https://via.placeholder.com/200"
-
-                st.markdown(f'''
-                    <div class="product-card">
-                        <div class="category-tag">#{cat}</div>
-                        <img src="{img}" style="width:100%; border-radius:10px;">
-                        <div class="title">{t[:55]}...</div>
-                        <div class="price">${p}</div>
-                    </div>
-                ''', unsafe_allow_html=True)
-                st.link_button("🔥 Go to Deal", lnk, use_container_width=True)
-                st.write("")
-    else:
-        st.warning("No products found in this category.")
+    # العرض
+    cols = st.columns(4)
+    for i, (idx, row) in enumerate(filtered_df.iterrows()):
+        with cols[i % 4]:
+            t, p, img, lnk, c = str(row.get('Title','')), str(row.get('Price','0')), str(row.get('Image','')), str(row.get('Link','#')), str(row.get('Category','General')).split('>')[0]
+            
+            if img.startswith('//'): img = 'https:' + img
+            
+            st.markdown(f'''
+                <div class="product-card">
+                    <span class="cat-label">{c}</span>
+                    <img src="{img if "http" in img else "https://via.placeholder.com/150"}" style="width:100%; border-radius:10px;">
+                    <div class="title">{t[:55]}...</div>
+                    <div class="price">${p}</div>
+                </div>
+            ''', unsafe_allow_html=True)
+            st.link_button("🚀 Get Deal", lnk, use_container_width=True)
+            st.write("")
 else:
-    st.info("👋 Admin: Upload the Excel file to show products and categories.")
+    st.info("Upload your AliExpress/Temu file to see the magic!")
