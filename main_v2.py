@@ -1,107 +1,103 @@
 import streamlit as st
 import pandas as pd
 
-# 1. إعدادات الصفحة
-st.set_page_config(page_title="DZ Trend Finder", page_icon="🛍️", layout="wide")
+st.set_page_config(page_title="Mega Store Hub", page_icon="🛍️", layout="wide")
 
-# 2. تصميم CSS احترافي وعصري
+# تصميم CSS (بطاقات السلع + التاجات)
 st.markdown("""
     <style>
-    .main { background-color: #f9f9f9; }
     .product-card {
-        background-color: white; border-radius: 15px; padding: 15px;
-        border: 1px solid #eee; text-align: center;
-        transition: 0.3s ease; height: 100%;
+        background: white; border-radius: 15px; padding: 15px;
+        border: 1px solid #eee; text-align: center; height: 100%;
+        transition: 0.3s ease;
     }
     .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-    .price { color: #e63946; font-weight: bold; font-size: 1.4rem; margin: 10px 0; }
-    .title { font-size: 0.9rem; font-weight: 600; height: 45px; overflow: hidden; color: #333; margin-bottom: 10px; }
-    img { border-radius: 10px; margin-bottom: 10px; object-fit: contain; }
-    .stButton>button { width: 100%; border-radius: 8px; background-color: #000; color: #fff; }
+    .price { color: #2ecc71; font-weight: bold; font-size: 1.4rem; margin: 10px 0; }
+    .title { font-size: 0.85rem; font-weight: 600; height: 45px; overflow: hidden; color: #333; }
+    .category-tag { font-size: 0.7rem; color: #777; font-style: italic; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. إدارة البيانات
 if 'inventory' not in st.session_state:
     st.session_state['inventory'] = None
 
-# 4. لوحة التحكم (Sidebar)
+# --- لوحة التحكم (Admin) ---
 with st.sidebar:
     st.title("🛡️ Admin Panel")
-    pwd = st.text_input("Security Key", type="password")
-    
-    if pwd == "dz2026":
-        st.success("Authorized")
-        uploaded_file = st.file_uploader("Upload AliExpress Excel", type=['xlsx', 'csv'])
-        
-        if uploaded_file:
+    if st.text_input("Key", type="password") == "dz2026":
+        file = st.file_uploader("Upload Excel File", type=['xlsx', 'csv'])
+        if file:
             try:
-                # قراءة الملف حسب النوع
-                df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
-                df.columns = df.columns.astype(str).str.strip() # تنظيف العناوين
+                df = pd.read_excel(file) if file.name.endswith('xlsx') else pd.read_csv(file)
+                df.columns = df.columns.astype(str).str.strip()
                 
-                # قاموس ذكي لترجمة أعمدة علي إكسبريس (النسخة الرمادية)
-                rename_dict = {
-                    'Product Desc': 'Title', 'Product Name': 'Title', 'Product Title': 'Title',
-                    'Price': 'Price', 'Discount Price': 'Price', 'Sale Price': 'Price',
-                    'Image Url': 'Image', 'Product Main Image Url': 'Image', 'ImageUrl': 'Image',
-                    'Link': 'Link', 'Promotion Url': 'Link', 'Promotion Link': 'Link'
+                # قاموس موسع لدعم جميع المنصات والأعمدة
+                mapping = {
+                    'Product Desc': 'Title', 'Product Name': 'Title', 'item_title': 'Title',
+                    'Price': 'Price', 'sale_price': 'Price', 'Discount Price': 'Price',
+                    'Image Url': 'Image', 'main_image': 'Image', 'Product Main Image Url': 'Image',
+                    'Link': 'Link', 'Promotion Url': 'Link', 'url': 'Link',
+                    'Category': 'Category', 'category': 'Category', 'Product Category': 'Category'
                 }
-                df = df.rename(columns=rename_dict)
-                
-                # حفظ البيانات في الجلسة
+                df = df.rename(columns=mapping)
                 st.session_state['inventory'] = df
-                st.sidebar.success(f"✅ Loaded {len(df)} products!")
+                st.sidebar.success(f"✅ Loaded {len(df)} Products!")
             except Exception as e:
                 st.sidebar.error(f"Error: {e}")
 
-# 5. الواجهة الرئيسية
-st.title("🛍️ DZ Trend Finder")
-st.markdown("#### *Find the best deals from AliExpress in one place*")
+# --- الواجهة الرئيسية ---
+st.title("🛒 DZ Smart Marketplace")
 
 if st.session_state['inventory'] is not None:
-    inventory_df = st.session_state['inventory']
+    df = st.session_state['inventory']
     
-    # محرك بحث بسيط
-    search = st.text_input("🔍 Search products...", placeholder="What are you looking for?")
-    
-    if search:
-        display_df = inventory_df[inventory_df['Title'].str.contains(search, case=False, na=False)]
+    # 1. إنشاء قائمة التصنيفات (Dynamic Dropdown)
+    # نجبدو كامل الأصناف الموجودة في الإكسل بلا تكرار
+    if 'Category' in df.columns:
+        categories = ["All Categories"] + sorted(df['Category'].dropna().unique().tolist())
     else:
-        display_df = inventory_df
+        categories = ["All Categories"]
+
+    # 2. تصميم "ليستة ديرولونت" (الـ Filter)
+    selected_cat = st.selectbox("📂 Select Category", categories)
+
+    # 3. محرك البحث بالنص
+    search_q = st.text_input("🔍 Search for a product...")
+
+    # 4. عملية الفلترة (Filtering Logic)
+    filtered_df = df.copy()
+    
+    # فلترة حسب التصنيف
+    if selected_cat != "All Categories":
+        filtered_df = filtered_df[filtered_df['Category'] == selected_cat]
+    
+    # فلترة حسب البحث
+    if search_q:
+        filtered_df = filtered_df[filtered_df['Title'].str.contains(search_q, case=False, na=False)]
 
     st.divider()
 
-    # 6. عرض السلع في 4 أعمدة
-    if not display_df.empty:
+    # 5. عرض السلع
+    if not filtered_df.empty:
         cols = st.columns(4)
-        for i, (index, row) in enumerate(display_df.iterrows()):
+        for i, (idx, row) in enumerate(filtered_df.iterrows()):
             with cols[i % 4]:
-                # جلب البيانات
-                t = str(row.get('Title', 'No Title'))
-                p = str(row.get('Price', '0.00'))
-                img = str(row.get('Image', ''))
-                lnk = str(row.get('Link', '#'))
-
-                # تصحيح روابط الصور (https:)
-                if img.startswith('//'): img = 'https:' + img
-                if img == 'nan' or not img.startswith('http'):
-                    img = "https://via.placeholder.com/200?text=Check+Link"
-
-                # الكارد الخاص بالمنتج
-                st.markdown('<div class="product-card">', unsafe_allow_html=True)
-                try:
-                    st.image(img, use_container_width=True)
-                except:
-                    st.image("https://via.placeholder.com/200?text=Image+Error", use_container_width=True)
+                t, p, img, lnk, cat = str(row.get('Title','')), str(row.get('Price','0')), str(row.get('Image','')), str(row.get('Link','#')), str(row.get('Category','General'))
                 
-                st.markdown(f'<div class="title">{t[:55]}...</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="price">${p}</div>', unsafe_allow_html=True)
-                st.link_button("🔥 View Deal", lnk, use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-                st.write("") # مسافة صغيرة
+                if img.startswith('//'): img = 'https:' + img
+                if not img.startswith('http'): img = "https://via.placeholder.com/200"
+
+                st.markdown(f'''
+                    <div class="product-card">
+                        <div class="category-tag">#{cat}</div>
+                        <img src="{img}" style="width:100%; border-radius:10px;">
+                        <div class="title">{t[:55]}...</div>
+                        <div class="price">${p}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+                st.link_button("🔥 Go to Deal", lnk, use_container_width=True)
+                st.write("")
     else:
-        st.warning("No products matching your search.")
+        st.warning("No products found in this category.")
 else:
-    st.info("👋 Welcome! Please upload your AliExpress Excel file from the Admin Panel on the left.")
-    st.image("https://via.placeholder.com/1000x300?text=Waiting+for+Inventory+Upload...", use_container_width=True)
+    st.info("👋 Admin: Upload the Excel file to show products and categories.")
