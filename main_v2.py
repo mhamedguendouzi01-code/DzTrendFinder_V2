@@ -1,76 +1,110 @@
 import streamlit as st
 import pandas as pd
+import re
 
-# 1. إعدادات الصفحة
-st.set_page_config(page_title="Global Sourcing DZ", layout="wide")
+# 1. إعدادات الصفحة والتصميم
+st.set_page_config(page_title="مركز التوريد العالمي", layout="wide")
 
-# 2. وظيفة جلب البيانات (معدلة لتقرأ من ملف ثابت أو رابط)
-def get_data():
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+    html, body, [data-testid="stSidebar"], .main { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
+    .product-card {
+        background: white; border-radius: 12px; padding: 15px;
+        border: 1px solid #eee; text-align: center; height: 100%;
+        transition: 0.3s;
+    }
+    .product-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.1); transform: translateY(-5px); }
+    .price-dzd { color: #27ae60; font-weight: bold; font-size: 1.2rem; }
+    .product-img { height: 180px; object-fit: contain; margin-bottom: 10px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 2. وظيفة جلب البيانات (Persistency)
+def load_data():
+    # نحاول نقرأ الملف الثابت أولاً
     try:
-        # هنا تقدر تحط رابط Google Sheet مباشر (CSV) باش يقعد مڤاردي
-        df = pd.read_excel("inventory.xlsx") 
+        df = pd.read_excel("inventory.xlsx")
         return df
     except:
-        return None
+        # إذا ما لقاش الملف، نرجعو None باش يرفع واحد جديد
+        return st.session_state.get('uploaded_df', None)
 
-# 3. نظام التنقل (Navigation System)
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = 'main'
-if 'selected_product' not in st.session_state:
-    st.session_state.selected_product = None
+# 3. إدارة التنقل والذاكرة (Navigation & Memory)
+if 'page' not in st.session_state:
+    st.session_state.page = 'home'
+if 'selected_item' not in st.session_state:
+    st.session_state.selected_item = None
 
-# --- صفحة المتجر الرئيسية ---
-def show_main_page(df):
+# --- صفحة المتجر (الجملة) ---
+def show_home(df):
     st.title("🌍 مركز التوريد العالمي - الجزائر")
-    st.write("---")
     
     if df is not None:
+        # شريط البحث
+        search = st.text_input("🔍 ابحث عن سلعة...", "")
+        display_df = df[df.iloc[:, 0].astype(str).str.contains(search, case=False)] if search else df
+
         cols = st.columns(4)
-        for i, (idx, row) in enumerate(df.iterrows()):
+        for i, (idx, row) in enumerate(display_df.iterrows()):
             with cols[i % 4]:
-                # عرض كارد المنتج
-                st.image(row.get('Image_URL', 'https://via.placeholder.com/200'), use_container_width=True)
-                st.subheader(f"{row.get('Title', 'منتج')[:40]}...")
-                st.write(f"💰 {row.get('Price', 0)} دولار")
+                # محرك استخراج الصور (الرادار اللي خدمناه)
+                img = next((str(row[c]) for c in df.columns if 'src' in str(c).lower() and "http" in str(row[c])), "")
+                if img.startswith('//'): img = 'https:' + img
                 
-                # زر الانتقال لصفحة التفاصيل
-                if st.button("تفاصيل المنتج 🔍", key=f"prod_{idx}"):
-                    st.session_state.selected_product = row
-                    st.session_state.current_page = 'details'
+                st.markdown(f"""
+                    <div class="product-card">
+                        <img src="{img}" class="product-img">
+                        <div style="height:50px; overflow:hidden;"><b>{str(row.get('product-title-text', 'منتج'))[:50]}...</b></div>
+                        <div class="price-dzd">{int(float(re.findall(r'\d+', str(row.get('tp-inline-block', '0')))[0]) * 240):,} دج</div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # زر الانتقال للتفاصيل
+                if st.button("عرض التفاصيل 🔍", key=f"btn_{idx}", use_container_width=True):
+                    st.session_state.selected_item = row
+                    st.session_state.page = 'details'
                     st.rerun()
     else:
-        st.error("لم يتم العثور على بيانات. يرجى رفع ملف inventory.xlsx")
+        st.warning("⚠️ لم يتم العثور على بيانات. ارفع ملف الإكسل في القائمة الجانبية.")
 
-# --- صفحة تفاصيل المنتج (Detail View) ---
+# --- صفحة التفاصيل (Details Page) ---
 def show_details():
-    product = st.session_state.selected_product
-    
+    item = st.session_state.selected_item
     if st.button("⬅️ العودة للمتجر"):
-        st.session_state.current_page = 'main'
+        st.session_state.page = 'home'
         st.rerun()
-    
+        
     col1, col2 = st.columns([1, 1.2])
-    
     with col1:
-        st.image(product.get('Image_URL', ''), use_container_width=True)
+        img = next((str(item[c]) for c in item.index if 'src' in str(c).lower() and "http" in str(item[c])), "")
+        st.image(img, use_container_width=True)
     
     with col2:
-        st.title(product.get('Title', ''))
-        st.header(f"السعر: {product.get('Price', 0)} دولار")
-        st.info(f"💡 الكمية الدنيا للطلب: {product.get('MOQ', 'غير محددة')}")
-        
-        st.write("### وصف المنتج")
-        st.write(product.get('Description', 'لا يوجد وصف مفصل حالياً.'))
-        
+        st.title(item.get('product-title-text', 'اسم المنتج'))
+        price_usd = float(re.findall(r'\d+', str(item.get('tp-inline-block', '0')))[0])
+        st.header(f"السعر: {price_usd * 240:,.2f} دج")
+        st.write(f"💵 السعر بالدولار: {price_usd}$")
         st.write("---")
-        # زر الواتساب للطلب المباشر
-        wa_msg = f"مرحباً، أريد الاستفسار عن منتج: {product.get('Title')}"
-        st.link_button("اطلب عبر واتساب 🟢", f"https://wa.me/213XXXXXXXXX?text={wa_msg}")
+        st.markdown("### تفاصيل التوريد")
+        st.write("📦 **نوع البيع:** جملة (Wholesale)")
+        st.write("📍 **المصدر:** علي بابا (التوصيل للجزائر)")
+        
+        # زر الواتساب (التنسيق للطلب)
+        msg = f"أريد استيراد: {item.get('product-title-text')}"
+        st.link_button("اطلب عبر واتساب ✅", f"https://wa.me/213XXXXXXXXX?text={msg}")
 
-# --- منطق تشغيل السيت ---
-data = get_data()
+# --- القائمة الجانبية (Admin) ---
+with st.sidebar:
+    st.header("⚙️ الإدارة")
+    up = st.file_uploader("تحديث السلعة (Excel)", type=['xlsx'])
+    if up:
+        st.session_state['uploaded_df'] = pd.read_excel(up)
+        st.success("تم التحديث!")
 
-if st.session_state.current_page == 'main':
-    show_main_page(data)
+# --- منطق التشغيل ---
+main_df = load_data()
+if st.session_state.page == 'home':
+    show_home(main_df)
 else:
     show_details()
