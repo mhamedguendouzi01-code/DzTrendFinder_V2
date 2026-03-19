@@ -3,9 +3,9 @@ import pandas as pd
 import re
 
 # 1. إعدادات الصفحة
-st.set_page_config(page_title="Global Sourcing Hub DZ", page_icon="📦", layout="wide")
+st.set_page_config(page_title="Global Sourcing Hub DZ", page_icon="🌍", layout="wide")
 
-# 2. تصميم CSS
+# 2. تصميم CSS احترافي (منظم للجزائريين)
 st.markdown("""
     <style>
     .product-card {
@@ -21,6 +21,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# سعر السكوار
 EXCHANGE_RATE = 240 
 
 if 'inventory' not in st.session_state:
@@ -33,26 +34,27 @@ with st.sidebar:
         uploaded_file = st.file_uploader("Upload Scraped File", type=['xlsx', 'csv'])
         if uploaded_file:
             try:
+                # قراءة الملف وتنظيف أسماء الأعمدة من الفراغات
                 df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
                 df.columns = df.columns.astype(str).str.strip()
 
-                # --- المابينج الجديد بناءً على صورة الإكسل تاعك ---
+                # --- القاموس الذكي بناءً على "صورتك" المبعوثة ---
+                # لاحظت في صورتك أن:
+                # 'product' هو العنوان
+                # 'tp-inlin' هو السعر
+                # 'tp-w-fu' هو الصورة
+                # 'tp-w-6' هو الرابط
                 mapping = {
-                    'tp-w-fu': 'Image',      # العمود الأول اللي فيه رابط الصورة
-                    'product': 'Title',      # العمود اللي فيه اسم السلعة (Casque, Module...)
-                    'tp-inlin': 'Price',     # العمود اللي فيه السعر (248,00 , 886,95...)
-                    'tp-text-': 'MOQ'        # العمود اللي فيه الكمية
+                    'product': 'Title',
+                    'tp-inlin': 'Price',
+                    'tp-w-fu': 'Image',
+                    'tp-w-6': 'Link',
+                    'tp-text-': 'MOQ'
                 }
                 
-                # إذا كانت الأسماء تختلف قليلاً، نحاول حلاً احتياطياً
                 df = df.rename(columns=mapping)
-                
-                # تصحيح الروابط: إذا كان رابط المنتج موجود في عمود آخر
-                if 'tp-w-6' in df.columns:
-                    df = df.rename(columns={'tp-w-6': 'Link'})
-                
                 st.session_state['inventory'] = df
-                st.sidebar.success("✅ تم قراءة ملف علي بابا بنجاح!")
+                st.sidebar.success(f"✅ تم تحميل {len(df)} سلعة بنجاح!")
             except Exception as e:
                 st.sidebar.error(f"Error: {e}")
 
@@ -65,32 +67,34 @@ if st.session_state['inventory'] is not None:
     
     for i, (idx, row) in enumerate(df.iterrows()):
         with cols[i % 4]:
-            # جلب البيانات من الأعمدة "الغريبة"
+            # جلب البيانات (مع معالجة القيم الفارغة)
             title = str(row.get('Title', 'No Title'))
             price_val = str(row.get('Price', '0'))
             img = str(row.get('Image', ''))
             lnk = str(row.get('Link', '#'))
 
-            # تنظيف السعر (تحويل 248,00 إلى رقم)
+            # تنظيف السعر (علي بابا يكتبه بالفواصل مثل 248,00)
             try:
-                p_str = price_val.replace(',', '.').replace('$', '').strip()
+                # نحول الفاصلة لنقطة وننزع أي رموز
+                p_str = price_val.replace(',', '.').replace(' ', '').replace('$', '').strip()
                 p_clean = float(re.findall(r'\d+\.?\d*', p_str)[0])
             except:
                 p_clean = 0.0
 
-            # تصحيح الصورة
-            if not img.startswith('http'): img = "https://via.placeholder.com/200?text=Check+Link"
+            # تصحيح روابط صور علي بابا
+            if img.startswith('//'): img = 'https:' + img
+            if not img.startswith('http'): img = "https://via.placeholder.com/200?text=Check+Alibaba"
 
             st.markdown(f'''
                 <div class="product-card">
                     <div class="badge">WHOLESALE</div>
                     <img src="{img}" style="width:100%; border-radius:12px; margin-top:20px; height:180px; object-fit:contain;">
                     <div class="title">{title}</div>
-                    <div class="price-usd">${p_clean:.2f}</div>
+                    <div class="price-usd">${p_clean:,.2f}</div>
                     <div class="price-dzd">≈ {int(p_clean * EXCHANGE_RATE):,} DA</div>
                 </div>
             ''', unsafe_allow_html=True)
             st.link_button("🤝 View on Alibaba", lnk, use_container_width=True)
             st.write("")
 else:
-    st.info("ارفع ملف الإكسل من القائمة الجانبية (Admin) باش تبدأ.")
+    st.info("👋 يا محمد، ارفع ملف الإكسل اللي هبطته من علي بابا في القائمة الجانبية.")
