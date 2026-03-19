@@ -1,110 +1,146 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Global Sourcing & Retail Hub", layout="wide")
+# 1. إعدادات الصفحة
+st.set_page_config(page_title="Global Sourcing Hub DZ", page_icon="📦", layout="wide")
 
-# --- تصميم CSS متطور جداً ---
+# 2. تصميم CSS احترافي (يدعم الجملة والتجزئة)
 st.markdown("""
     <style>
     .product-card {
-        background: white; border-radius: 20px; padding: 20px;
-        border: 1px solid #f0f0f0; text-align: center; height: 100%;
-        transition: 0.4s ease; position: relative;
+        background: white; border-radius: 15px; padding: 20px;
+        border: 1px solid #eee; text-align: center; height: 100%;
+        transition: 0.3s ease; position: relative;
     }
-    .product-card:hover { transform: translateY(-10px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
-    .price-tag { color: #27ae60; font-weight: bold; font-size: 1.5rem; margin-bottom: 5px; }
-    .price-dzd { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 10px; font-weight: 500; }
-    .title { font-size: 0.9rem; font-weight: 600; height: 45px; overflow: hidden; color: #2c3e50; margin-bottom: 15px; }
-    .badge { position: absolute; top: 15px; left: 15px; padding: 4px 12px; border-radius: 50px; color: white; font-size: 0.7rem; font-weight: bold; }
-    .ali { background: linear-gradient(45deg, #ff4747, #ff8c8c); }
-    .alibaba { background: linear-gradient(45deg, #ff6a00, #ee0979); }
-    .calc-box { background: #f8f9fa; border-radius: 10px; padding: 10px; margin-top: 10px; border: 1px dashed #ddd; }
-    .total-price { color: #e67e22; font-weight: bold; font-size: 1rem; }
+    .product-card:hover { transform: translateY(-10px); box-shadow: 0 12px 25px rgba(0,0,0,0.1); }
+    .price-usd { color: #27ae60; font-weight: bold; font-size: 1.4rem; margin: 5px 0; }
+    .price-dzd { color: #7f8c8d; font-size: 0.95rem; font-weight: 500; margin-bottom: 10px; }
+    .title { font-size: 0.85rem; font-weight: 600; height: 45px; overflow: hidden; color: #333; line-height: 1.2; }
+    .badge { position: absolute; top: 15px; left: 15px; padding: 4px 10px; border-radius: 5px; color: white; font-size: 0.7rem; font-weight: bold; }
+    .ali { background: #ff4747; } .alibaba { background: #ff6a00; } .other { background: #95a5a6; }
+    .calc-box { background: #f9f9f9; border-radius: 8px; padding: 10px; margin-top: 10px; border: 1px dashed #ccc; }
     </style>
     """, unsafe_allow_html=True)
 
-# إعدادات العملة (تقدر تبدل سعر السكوار هنا)
+# إعداد سعر الصرف (السكوار)
 EXCHANGE_RATE = 240 
 
-if 'inventory' not in st.session_state: st.session_state['inventory'] = None
+if 'inventory' not in st.session_state:
+    st.session_state['inventory'] = None
 
-# --- الجانب الإداري ---
+# 3. لوحة التحكم (Admin Sidebar)
 with st.sidebar:
-    st.title("🛡️ Admin Console")
+    st.title("🛡️ Admin Panel")
     if st.text_input("Security Key", type="password") == "dz2026":
-        file = st.file_uploader("Upload Master File (Ali/Alibaba/Temu)", type=['xlsx', 'csv'])
-        if file:
-            df = pd.read_excel(file) if file.name.endswith('xlsx') else pd.read_csv(file)
-            df.columns = df.columns.astype(str).str.strip()
-            # القاموس الذكي
-            mapping = {
-                'Product Desc': 'Title', 'title': 'Title', 'Price': 'Price', 'price': 'Price',
-                'Image Url': 'Image', 'image': 'Image', 'Link': 'Link', 'url': 'Link',
-                'MOQ': 'MOQ', 'Min. Order': 'MOQ', 'Category': 'Category'
-            }
-            st.session_state['inventory'] = df.rename(columns=mapping)
-            st.success("Database Updated!")
+        st.success("Access Granted")
+        uploaded_file = st.file_uploader("Upload Scraped File (Ali/Alibaba)", type=['xlsx', 'csv'])
+        
+        if uploaded_file:
+            try:
+                # قراءة الملف
+                df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
+                df.columns = df.columns.astype(str).str.strip()
 
-st.title("🛍️ Global Sourcing & Retail Hub")
-st.markdown("---")
+                # القاموس الذكي الشامل (Mapping) لفك شفرة ملفات السكرابر
+                mapping = {
+                    # العناوين
+                    'subject': 'Title', 'product_name': 'Title', 'title': 'Title', 'Product Desc': 'Title', 'item_title': 'Title',
+                    # الأسعار
+                    'min_price': 'Price', 'price_range': 'Price', 'price': 'Price', 'unit_price': 'Price', 'Discount Price': 'Price',
+                    # الصور
+                    'product_image': 'Image', 'image_url': 'Image', 'image': 'Image', 'src': 'Image', 'imageUrl': 'Image', 'Product Main Image Url': 'Image',
+                    # الروابط
+                    'product_url': 'Link', 'url': 'Link', 'link': 'Link', 'Link': 'Link', 'Promotion Url': 'Link',
+                    # الجملة (MOQ)
+                    'min_order': 'MOQ', 'moq': 'MOQ', 'Min. Order': 'MOQ', 'min_order_quantity': 'MOQ'
+                }
+                
+                df = df.rename(columns=mapping)
+                st.session_state['inventory'] = df
+                st.sidebar.success(f"✅ {len(df)} Items Loaded!")
+            except Exception as e:
+                st.sidebar.error(f"Error: {e}")
+
+# 4. الواجهة الرئيسية
+st.title("🌍 Global Sourcing Hub - Algeria")
+st.markdown("##### *Your Gateway to Alibaba Wholesale & AliExpress Deals*")
 
 if st.session_state['inventory'] is not None:
     df = st.session_state['inventory']
     
-    # فلترة ذكية
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        cats = ["All Categories"] + sorted(df['Category'].dropna().unique().tolist()) if 'Category' in df.columns else ["All Categories"]
-        selected_cat = st.selectbox("📂 Category", cats)
-    with col2:
-        search = st.text_input("🔍 Search for products or suppliers...")
+    # محرك البحث والفلترة
+    col_search, col_cat = st.columns([2, 1])
+    with col_search:
+        q = st.text_input("🔍 Search for products, brands or suppliers...")
+    with col_cat:
+        if 'Category' in df.columns:
+            cats = ["All Categories"] + sorted(df['Category'].dropna().unique().tolist())
+            selected_cat = st.selectbox("📂 Category", cats)
+        else:
+            selected_cat = "All Categories"
 
-    # منطق الفلترة
-    display_df = df
+    # تطبيق الفلترة
+    display_df = df.copy()
+    if q: display_df = display_df[display_df['Title'].str.contains(q, case=False, na=False)]
     if selected_cat != "All Categories": display_df = display_df[display_df['Category'] == selected_cat]
-    if search: display_df = display_df[display_df['Title'].str.contains(search, case=False, na=False)]
 
-    # --- عرض المنتجات ---
+    st.divider()
+
+    # 5. عرض المنتجات في 4 أعمدة
     cols = st.columns(4)
     for i, (idx, row) in enumerate(display_df.iterrows()):
         with cols[i % 4]:
-            t, p, img, lnk = str(row.get('Title','')), row.get('Price', 0), str(row.get('Image','')), str(row.get('Link',''))
-            moq = str(row.get('MOQ', '1'))
-            
-            # تنظيف السعر (إذا كان مكتوب كـ "10.5 - 15.0" يدي القيمة الأولى)
+            # جلب وتنظيف البيانات
+            title = str(row.get('Title', 'No Title'))
+            raw_price = str(row.get('Price', '0'))
+            img = str(row.get('Image', ''))
+            lnk = str(row.get('Link', '#'))
+            moq_val = str(row.get('MOQ', '1'))
+
+            # معالجة السعر (يأخذ القيمة الصغرى إذا كان هناك مجال)
             try:
-                p_clean = float(str(p).split('-')[0].replace('$', '').strip())
+                p_clean = float(raw_price.split('-')[0].replace('$', '').strip())
             except:
                 p_clean = 0.0
 
-            # تحديد نوع المتجر
-            is_wholesale = 'alibaba' in lnk.lower()
-            b_class = "alibaba" if is_wholesale else "ali"
-            b_name = "Wholesale (Joumala)" if is_wholesale else "Retail (Affiliate)"
+            # تحديد نوع المنصة
+            is_alibaba = 'alibaba.com' in lnk.lower()
+            badge_class = "alibaba" if is_alibaba else "ali"
+            badge_text = "WHOLESALE" if is_alibaba else "RETAIL"
 
+            # تصحيح رابط الصورة
+            if img.startswith('//'): img = 'https:' + img
+            if not img.startswith('http'): img = "https://via.placeholder.com/200?text=No+Image"
+
+            # إنشاء الكارد
             st.markdown(f'''
                 <div class="product-card">
-                    <div class="badge {b_class}">{b_name}</div>
-                    <img src="{img if 'http' in img else 'https://via.placeholder.com/150'}" style="width:100%; border-radius:15px; margin-top:20px;">
-                    <div class="title">{t[:50]}...</div>
-                    <div class="price-tag">${p_clean:.2f}</div>
+                    <div class="badge {badge_class}">{badge_text}</div>
+                    <img src="{img}" style="width:100%; border-radius:12px; margin-top:20px; height:180px; object-fit:contain;">
+                    <div class="title">{title[:55]}...</div>
+                    <div class="price-usd">${p_clean:.2f}</div>
                     <div class="price-dzd">≈ {int(p_clean * EXCHANGE_RATE):,} DA</div>
             ''', unsafe_allow_html=True)
 
-            # إذا كانت جملة (علي بابا)، نزيدو آلة حاسبة
-            if is_wholesale:
+            # آلة حاسبة إذا كان المنتج من علي بابا (جملة)
+            if is_alibaba:
                 st.markdown('<div class="calc-box">', unsafe_allow_html=True)
-                qty = st.number_input(f"Qty (Min: {moq})", min_value=1, value=int(moq) if moq.isdigit() else 1, key=f"qty_{idx}")
+                # استخراج رقم الـ MOQ
+                try: moq_int = int(''.join(filter(str.isdigit, moq_val))) 
+                except: moq_int = 1
+                
+                qty = st.number_input(f"Qty (Min: {moq_val})", min_value=1, value=moq_int, key=f"q_{idx}")
                 total = qty * p_clean
-                st.markdown(f'Total: <span class="total-price">${total:,.2f}</span>', unsafe_allow_html=True)
-                st.markdown(f'<div style="font-size:0.8rem; color:#888;">({int(total*EXCHANGE_RATE):,} DA)</div>', unsafe_allow_html=True)
+                st.markdown(f'<span style="font-size:0.8rem; color:#666;">Total:</span> <b style="color:#e67e22;">${total:,.2f}</b>', unsafe_allow_html=True)
+                st.markdown(f'<div style="font-size:0.75rem; color:#888;">({int(total * EXCHANGE_RATE):,} DA)</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
                 st.link_button("🤝 Contact Supplier", lnk, use_container_width=True)
             else:
-                st.markdown('<div style="height:115px;"></div>', unsafe_allow_html=True) # موازنة الطول
+                st.markdown('<div style="height:115px;"></div>', unsafe_allow_html=True)
                 st.link_button("🛒 Buy Now", lnk, use_container_width=True)
 
             st.markdown('</div>', unsafe_allow_html=True)
             st.write("")
 else:
-    st.info("Please upload your inventory file to begin.")
+    st.info("👋 Welcome! Go to the Admin Panel on the left, enter the key 'dz2026', and upload your Excel file to start.")
+    st.image("https://via.placeholder.com/1200x400?text=Waiting+for+Inventory+Upload...", use_container_width=True)
