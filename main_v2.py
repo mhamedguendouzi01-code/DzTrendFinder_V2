@@ -2,18 +2,14 @@ import streamlit as st
 import pandas as pd
 import re
 
-# 1. إعدادات الصفحة واللغة
+# 1. إعدادات الصفحة
 st.set_page_config(page_title="مركز التوريد العالمي - الجزائر", page_icon="🌍", layout="wide")
 
-# 2. تصميم CSS احترافي يدعم العربية (RTL)
+# 2. تصميم CSS (RTL وخط Cairo)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-    html, body, [data-testid="stSidebar"], .main {
-        font-family: 'Cairo', sans-serif;
-        direction: rtl;
-        text-align: right;
-    }
+    html, body, [data-testid="stSidebar"], .main { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
     .product-card {
         background: white; border-radius: 15px; padding: 20px;
         border: 1px solid #eee; text-align: center; height: 100%;
@@ -27,30 +23,29 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# سعر السكوار
 EXCHANGE_RATE = 240 
 
 if 'inventory' not in st.session_state:
     st.session_state['inventory'] = None
 
-# 3. لوحة التحكم (بالعربية)
+# 3. لوحة التحكم
 with st.sidebar:
     st.title("🛡️ لوحة التحكم")
     if st.text_input("كود الأمان", type="password") == "dz2026":
-        st.success("تم الدخول بنجاح")
-        uploaded_file = st.file_uploader("ارفع ملف الإكسل (Alibaba)", type=['xlsx', 'csv'])
+        uploaded_file = st.file_uploader("ارفع ملف علي بابا", type=['xlsx', 'csv'])
         if uploaded_file:
             try:
                 df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
                 df.columns = df.columns.astype(str).str.strip()
 
-                # --- القاموس الذكي بناءً على صورة الإكسل اللي بعثتها ---
+                # --- القاموس الذكي بناءً على صورتك الأخيرة ---
                 mapping = {
-                    'product': 'Title',      # اسم المنتج
-                    'tp-inlin': 'Price',     # السعر
-                    'tp-w-fu': 'Image',      # رابط الصورة
-                    'tp-w-6': 'Link',        # رابط المنتج
-                    'tp-text-': 'MOQ'        # الكمية الدنيا
+                    'product-title-text': 'Title',
+                    'tp-inline-block': 'Price',
+                    'product-title-text src': 'Image',  # الصورة في هذا العمود
+                    'tp-h-full src': 'Image_Alt',       # احتياطي للصورة
+                    'tp-me-1 href': 'Link',             # رابط المنتج
+                    'tp-text-sm href': 'Link_Alt'       # احتياطي للرابط
                 }
                 
                 df = df.rename(columns=mapping)
@@ -61,7 +56,6 @@ with st.sidebar:
 
 # 4. الواجهة الرئيسية
 st.title("🌍 مركز التوريد العالمي - الجزائر")
-st.markdown("### استورد جملة من علي بابا بأسعار المصنع")
 
 if st.session_state['inventory'] is not None:
     df = st.session_state['inventory']
@@ -69,20 +63,22 @@ if st.session_state['inventory'] is not None:
     
     for i, (idx, row) in enumerate(df.iterrows()):
         with cols[i % 4]:
-            # جلب البيانات
+            # جلب البيانات (أولوية للعمود الأساسي ثم الاحتياطي)
             title = str(row.get('Title', 'بدون عنوان'))
             price_val = str(row.get('Price', '0'))
-            img = str(row.get('Image', ''))
-            lnk = str(row.get('Link', '#'))
+            
+            # محاولة جلب الصورة من عدة احتمالات
+            img = str(row.get('Image', row.get('Image_Alt', '')))
+            lnk = str(row.get('Link', row.get('Link_Alt', '#')))
 
-            # تنظيف السعر (التعامل مع الفواصل مثل 248,00)
+            # تنظيف السعر
             try:
                 p_str = price_val.replace(',', '.').replace(' ', '').replace('$', '').strip()
                 p_clean = float(re.findall(r'\d+\.?\d*', p_str)[0])
             except:
                 p_clean = 0.0
 
-            # تصحيح الصورة (Alibaba)
+            # تصحيح الصورة
             if img.startswith('//'): img = 'https:' + img
             if not img.startswith('http'): img = "https://via.placeholder.com/200?text=Check+Alibaba"
 
@@ -95,7 +91,7 @@ if st.session_state['inventory'] is not None:
                     <div class="price-dzd">≈ {int(p_clean * EXCHANGE_RATE):,} دج</div>
                 </div>
             ''', unsafe_allow_html=True)
-            st.link_button("عرض على موقع علي بابا 🤝", lnk, use_container_width=True)
+            st.link_button("عرض على علي بابا 🤝", lnk, use_container_width=True)
             st.write("")
 else:
-    st.info("👋 يا محمد، ارفع ملف الإكسل من القائمة الجانبية باش تظهر السلع.")
+    st.info("👋 ارفع ملف الإكسل من القائمة الجانبية (Admin) بالكود dz2026.")
