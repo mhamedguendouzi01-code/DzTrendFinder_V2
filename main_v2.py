@@ -1,108 +1,69 @@
 import streamlit as st
 import pandas as pd
-import re
 
-# 1. إعدادات الصفحة
-st.set_page_config(page_title="مركز التوريد العالمي - الجزائر", page_icon="🌍", layout="wide")
+# إعدادات الصفحة
+st.set_page_config(page_title="Global Sourcing Hub DZ", layout="wide")
 
-# 2. تصميم CSS احترافي (عربي 100%)
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-    html, body, [data-testid="stSidebar"], .main { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
-    .product-card {
-        background: white; border-radius: 15px; padding: 20px;
-        border: 1px solid #eee; text-align: center; height: 100%;
-        transition: 0.3s ease; display: flex; flex-direction: column;
-        justify-content: space-between; position: relative;
-    }
-    .product-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
-    .price-usd { color: #27ae60; font-weight: bold; font-size: 1.4rem; margin: 5px 0; }
-    .price-dzd { color: #7f8c8d; font-size: 0.95rem; font-weight: 500; margin-bottom: 10px; }
-    .title { font-size: 0.85rem; font-weight: 600; min-height: 50px; overflow: hidden; color: #333; margin-bottom: 10px; line-height: 1.4; }
-    .badge { position: absolute; top: 15px; right: 15px; padding: 4px 10px; border-radius: 5px; color: white; font-size: 0.7rem; font-weight: bold; background: #ff6a00; z-index: 10; }
-    .product-img { max-height: 200px; width: 100%; object-fit: contain; margin-bottom: 15px; border-radius: 10px; background: #f9f9f9; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- 1. وظيفة لجلب البيانات (باش تقعد مڤارديا) ---
+def load_data():
+    # هنا تقدر تحط اسم ملف الإكسل تاعك اللي فيه السلعة
+    try:
+        df = pd.read_excel("inventory.xlsx") # الملف لازم يكون في نفس Dossier
+        return df
+    except:
+        return None
 
-# سعر السكوار الحالي
-EXCHANGE_RATE = 240 
+# --- 2. إدارة التنقل بين الصفحات ---
+if 'page' not in st.session_state:
+    st.session_state.page = 'home'
+if 'selected_item' not in st.session_state:
+    st.session_state.selected_item = None
 
-if 'inventory' not in st.session_state:
-    st.session_state['inventory'] = None
-
-# 3. لوحة التحكم (Admin Sidebar)
-with st.sidebar:
-    st.title("🛡️ لوحة التحكم")
-    if st.text_input("كود الأمان", type="password") == "dz2026":
-        uploaded_file = st.file_uploader("ارفع ملف علي بابا الأخير", type=['xlsx', 'csv'])
-        if uploaded_file:
-            try:
-                df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
-                # تنظيف أسماء الأعمدة
-                df.columns = [str(col).strip() for col in df.columns]
-                st.session_state['inventory'] = df
-                st.sidebar.success(f"✅ تم تحميل {len(df)} سلعة بنجاح!")
-            except Exception as e:
-                st.sidebar.error(f"خطأ في قراءة الملف: {e}")
-
-# 4. الواجهة الرئيسية
-st.title("🌍 مركز التوريد العالمي - الجزائر")
-
-if st.session_state['inventory'] is not None:
-    df = st.session_state['inventory']
+# --- 3. صفحة المتجر (الجملة) ---
+def show_home():
+    st.title("🌍 متجر الجملة - الجزائر")
+    df = load_data()
     
-    # محرك البحث
-    search_q = st.text_input("🔍 ابحث عن منتج بالاسم...", "")
-    if search_q:
-        # البحث في عمود العنوان (نحاول تخمين اسم العمود)
-        title_col = next((c for c in df.columns if 'title' in c.lower() or 'product' in c.lower()), df.columns[0])
-        df = df[df[title_col].astype(str).str.contains(search_q, case=False, na=False)]
+    if df is not None:
+        cols = st.columns(4)
+        for i, (idx, row) in enumerate(df.iterrows()):
+            with cols[i % 4]:
+                st.image(row['Image'], use_column_width=True)
+                st.subheader(row['Title'][:50])
+                st.write(f"السعر: {row['Price']} $")
+                
+                # زر "عرض التفاصيل" هو اللي ينسق بين الصفحات
+                if st.button(f"تفاصيل المنتج", key=f"btn_{idx}"):
+                    st.session_state.selected_item = row
+                    st.session_state.page = 'details'
+                    st.rerun()
+    else:
+        st.warning("يرجى التأكد من وجود ملف inventory.xlsx في مجلد المشروع")
 
-    cols = st.columns(4)
-    for i, (idx, row) in enumerate(df.iterrows()):
-        with cols[i % 4]:
-            # --- منطق استخراج البيانات الذكي ---
+# --- 4. صفحة التفاصيل (Detail Page) ---
+def show_details():
+    item = st.session_state.selected_item
+    if item is not None:
+        if st.button("⬅️ العودة للمتجر"):
+            st.session_state.page = 'home'
+            st.rerun()
             
-            # 1. استخراج العنوان
-            title = str(row.get('product-title-text', row.get('product', row.get('Title', 'بدون عنوان'))))
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.image(item['Image'], width=400)
+        with col2:
+            st.title(item['Title'])
+            st.header(f"السعر: {item['Price']} $")
+            st.write(f"**الكمية الدنيا (MOQ):** {item.get('MOQ', '10 قطع')}")
+            st.write("---")
+            st.write("**وصف المنتج:**")
+            st.write(item.get('Description', 'لا يوجد وصف متاح حالياً لهذا المنتج المستورد.'))
             
-            # 2. استخراج وتنظيف السعر
-            price_raw = str(row.get('tp-inline-block', row.get('tp-inlin', row.get('Price', '0'))))
-            try:
-                p_clean = float(re.findall(r'\d+\.?\d*', price_raw.replace(',', '.'))[0])
-            except:
-                p_clean = 0.0
+            # زر التواصل
+            st.link_button("طلب السلعة عبر واتساب ✅", f"https://wa.me/213XXXXXXX?text=اريد_طلب_{item['Title']}")
 
-            # 3. "رادار الصور" المطور (يحل مشكلة الاختفاء)
-            # يبحث عن أي عمود ينتهي بـ "src" أو يحتوي على رابط صورة
-            img = ""
-            img_columns = [c for c in df.columns if 'src' in c.lower() or 'image' in c.lower() or 'img' in c.lower()]
-            
-            for col in img_columns:
-                val = str(row.get(col, ''))
-                if ("http" in val or val.startswith("//")) and "flag" not in val.lower() and "icon" not in val.lower():
-                    img = val
-                    break
-            
-            if img.startswith('//'): img = 'https:' + img
-            # إذا لم يجد صورة، نضع صورة افتراضية احترافية
-            if not img or len(img) < 10: img = "https://via.placeholder.com/300x200?text=No+Image+Available"
-
-            # 4. استخراج الرابط
-            lnk = str(row.get('tp-me-1 href', row.get('tp-text-sm href', row.get('Link', '#'))))
-
-            # عرض البطاقة
-            st.markdown(f'''
-                <div class="product-card">
-                    <div class="badge">جملة</div>
-                    <img src="{img}" class="product-img">
-                    <div class="title">{title[:75]}...</div>
-                    <div class="price-usd">{p_clean:,.2f} دولار</div>
-                    <div class="price-dzd">≈ {int(p_clean * EXCHANGE_RATE):,} دج</div>
-                </div>
-            ''', unsafe_allow_html=True)
-            st.link_button("تفاصيل المنتج 🤝", lnk, use_container_width=True)
-            st.write("")
+# --- 5. منطق التشغيل ---
+if st.session_state.page == 'home':
+    show_home()
 else:
-    st.info("👋 يا محمد، السيت جاهز. ارفع ملف الإكسل من القائمة الجانبية (Admin).")
+    show_details()
