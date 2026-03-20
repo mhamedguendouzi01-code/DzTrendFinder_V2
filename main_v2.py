@@ -1,52 +1,38 @@
 import streamlit as st
-import pandas as pd
 
-# 1. إعداد الصفحة (يجب أن يكون أول أمر Streamlit)
+# إعداد الصفحة الرئيسية للنسخة V2
 st.set_page_config(
-    page_title="Global AI Deals Hub", 
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="DzTrendFinder V2",
+    page_icon="📈",
+    layout="wide"
 )
 
-# 2. تصميم القائمة الجانبية (Menu) المستوحى من AliExpress
+# تصميم القائمة الجانبية (Sidebar) بلمسة AliExpress
 st.sidebar.markdown("""
-    <style>
-        .css-1d391kg {  /* تعديل لون القائمة الجانبية في بعض الثيمات */
-            background-color: #f5f5f5;
-        }
-        .aliexpress-menu-header {
-            font-size: 24px;
-            font-weight: bold;
-            color: #FF4747; /* لون أحمر AliExpress */
-            text-align: center;
-            padding: 10px 0;
-            border-bottom: 2px solid #FF4747;
-            margin-bottom: 20px;
-        }
-    </style>
+    <div style="background-color: #FF4747; padding: 15px; border-radius: 10px; text-align: center;">
+        <h2 style="color: white; margin: 0;">DzTrend V2</h2>
+        <p style="color: white; font-size: 12px;">Smart Sourcing Hub</p>
+    </div>
+    <br>
 """, unsafe_allow_html=True)
 
-# رأس القائمة الجانبية
-st.sidebar.markdown('<div class="aliexpress-menu-header">GLOBAL AI HUB</div>', unsafe_allow_html=True)
+st.sidebar.title("📌 القائمة الرئيسية")
+st.sidebar.info("اختر القسم المطلوب من الأعلى للتنقل بين الجملة والتجزئة.")
 
-# إضافة عناصر إضافية للقائمة الجانبية (غير الصفحات التلقائية)
-st.sidebar.subheader("🌍 التنقل السريع")
-st.sidebar.info("استخدم القائمة أعلاه للانتقال بين أسواق الجملة والتجزئة.")
+# محتوى الصفحة الرئيسية (Dashboard)
+st.title("🚀 مرحباً بك في DzTrendFinder V2")
+st.markdown("---")
 
-st.sidebar.divider()
-st.sidebar.subheader("👤 حسابي")
-st.sidebar.button("لوحة التحكم (Dashboard)")
-st.sidebar.button("الإعدادات")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric(label="إجمالي المنتجات المراقبة", value="1,240", delta="12%+")
+with col2:
+    st.metric(label="أفضل مورد (Alibaba)", value="Shenzhen Tech", delta="Verified")
+with col3:
+    st.metric(label="أعلى ربح متاح", value="5,200 DA", delta="Hot Deal")
 
-# --- محتوى الصفحة الرئيسية ---
-st.title("Welcome to Global AI Deals Hub")
-st.markdown("""
-### منصتك الذكية لإدارة الصفقات بين أسواق الجملة والتجزئة.
+st.divider()
+st.subheader("📝 ملاحظات المدير (ADV Notes)")
+st.text_area("أضف ملاحظاتك حول حالة السوق اليوم:", placeholder="مثال: ارتفاع أسعار الشحن من علي بابا...")
 
-👈 **اختر من القائمة الجانبية:**
-* **Wholesale (علي بابا):** للبحث عن الموردين وإدارة المخزون بالجملة.
-* **Retail (علي إكسبريس، تيمو، أمازون):** لمراقبة أسعار التجزئة وتنسيق الصفقات الذكية.
-""")
-
-# يمكنك إضافة الـ Dashboard الرئيسي هنا مستقبلاً
+st.success("المنصة جاهزة للعمل. ابدأ برفع بياناتك من الأقسام الجانبية.")
